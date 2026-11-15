@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>નવો વ્યાપાર (Navo Vyapar) - ગુજરાતી બિઝનેસ બોર્ડ ગેમ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- હેડર બાર (Header Bar) -->
+  <header class="game-header">
+    <div class="brand-title">
+      <div class="logo-badge">🚢</div>
+      <div class="title-text">
+        <h1>નવો વ્યાપાર</h1>
+        <p>ગુજરાતી ઇન્ડિયન બિઝનેસ ગેમ • વોરા સ્પેશિયલ</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-icon btn-senior-toggle" id="btn-toggle-senior">
+        👓 મોટા અક્ષરો (વડીલો માટે)
+      </button>
+      <button class="btn-icon" id="btn-toggle-sound">🔊 અવાજ ચાલુ</button>
+      <button class="btn-icon" id="btn-view-board-ref">🖼️ અસલ બોર્ડ જુઓ</button>
+      <button class="btn-icon" id="btn-view-rules">📜 નિયમો</button>
+      <button class="btn-icon" id="btn-new-game" style="background: rgba(255, 179, 0, 0.25); border-color: #ffd54f;">
+        🎲 નવી રમત
+      </button>
+    </div>
+  </header>
+
+  <!-- મુખ્ય કન્ટેનર -->
+  <main class="main-container">
+    
+    <!-- ડાબી સાઈડબાર: બેંક અને ખેલાડીઓની યાદી -->
+    <aside class="side-panel">
+      
+      <!-- બેંક તિજોરી કાર્ડ -->
+      <div class="panel-card bank-card">
+        <div class="panel-title">
+          <span>🏛️</span> સેન્ટ્રલ બેંક ઓફ ઇન્ડિયા (તિજોરી)
+        </div>
+        <div class="bank-stats-grid">
+          <div class="bank-stat">
+            <div class="bank-stat-label">બેંક તિજોરી રોકડ</div>
+            <div class="bank-stat-val" id="bank-vault-cash">રૂ. ૨,૫૦,૦૦૦</div>
+          </div>
+          <div class="bank-stat">
+            <div class="bank-stat-label">કુલ આપેલ લોન</div>
+            <div class="bank-stat-val" id="bank-active-loans" style="color:#ffb74d;">રૂ. ૦</div>
+          </div>
+        </div>
+        <button class="btn-bank-action" id="btn-loan-quick">
+          💰 બેંક લોન સુવિધા (૧૦% વ્યાજ)
+        </button>
+      </div>
+
+      <!-- ખેલાડીઓનું લિસ્ટ -->
+      <div class="panel-card" style="flex:1;">
+        <div class="panel-title">
+          <span>👥</span> ખેલાડીઓનું ખાતાવહી
+        </div>
+        <div class="players-list" id="players-list-container">
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- મધ્યમાં ૧૦ x ૧૦ બોર્ડ -->
+    <section class="board-wrapper">
+
+      <!-- લાઇવ ઓન-સ્ક્રીન ઇવેન્ટ બેનર (કોઈ સાઇડબાર વાંચવાની જરૂર નથી!) -->
+      <div class="screen-event-banner" id="screen-event-banner">
+        <div class="event-banner-inner">
+          <div class="event-banner-icon" id="event-banner-icon">🎲</div>
+          <div class="event-banner-body">
+            <div class="event-banner-title" id="event-banner-title">નવો વ્યાપાર</div>
+            <div class="event-banner-desc" id="event-banner-desc">રમત શરૂ થઈ ગઈ છે! પાસા ફેંકી દાવ આગળ વધારો.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- વડીલો અને મોબાઇલ યુઝર્સ માટે મોટું એક્ટિવ ટાઇલ કાર્ડ -->
+      <div class="active-tile-focus-container" style="display:none;" id="active-tile-focus-wrapper">
+        <div class="active-tile-card" id="active-tile-focus-card">
+        </div>
+      </div>
+
+      <div class="board-container" id="game-board">
+        
+        <!-- બોર્ડની વચ્ચેનો ભાગ -->
+        <div class="board-center-area">
+          <div class="ship-background-layer"></div>
+          
+          <!-- સઢવાળું ભવ્ય વહાણ -->
+          <svg class="center-ship-svg" viewBox="0 0 500 350" fill="none">
+            <path d="M0 290 Q125 270 250 290 T500 290 L500 350 L0 350 Z" fill="#0277bd" opacity="0.6"/>
+            <path d="M0 310 Q125 295 250 310 T500 310 L500 350 L0 350 Z" fill="#01579b" opacity="0.9"/>
+            <path d="M90 260 L410 260 Q440 260 450 240 L400 240 L370 275 L120 275 L70 240 Z" fill="#ffffff" stroke="#3e2723" stroke-width="4"/>
+            <path d="M80 250 L420 250 L410 260 L90 260 Z" fill="#d32f2f"/>
+            <line x1="170" y1="250" x2="170" y2="40" stroke="#5d4037" stroke-width="6"/>
+            <line x1="260" y1="250" x2="260" y2="20" stroke="#5d4037" stroke-width="7"/>
+            <line x1="350" y1="250" x2="350" y2="50" stroke="#5d4037" stroke-width="6"/>
+            <path d="M130 90 Q170 80 210 90 L200 135 Q170 145 140 135 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M125 150 Q170 140 215 150 L205 195 Q170 205 135 195 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M120 210 Q170 200 220 210 L210 245 Q170 252 130 245 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M220 60 Q260 50 300 60 L290 110 Q260 120 230 110 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M210 125 Q260 115 310 125 L300 180 Q260 190 220 180 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M205 195 Q260 185 315 195 L305 245 Q260 252 215 245 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M320 95 Q350 88 380 95 L375 140 Q350 148 325 140 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M315 155 Q350 148 385 155 L375 200 Q350 208 320 200 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+            <path d="M310 210 Q350 202 390 210 L380 245 Q350 250 315 245 Z" fill="#ffffff" stroke="#cfd8dc" stroke-width="2"/>
+          </svg>
+
+          <!-- બોર્ડ પર દર્શાવેલા ૪ અધિકૃત નિયમ પેનલ્સ -->
+          <div class="center-quadrants-container">
+            <div class="quadrant-box">
+              <h4>🤝 વ્યવહાર (બેકી)</h4>
+              <ul>
+                <li>• <b>૨:</b> જન્મતિથિ (રૂ. ૫૦૦ મેળવો)</li>
+                <li>• <b>૪:</b> હોટેલ ખર્ચ રૂ. ૫૦૦ આપો</li>
+                <li>• <b>૬:</b> સુંદર હસ્તલેખન રૂ. ૨,૦૦૦</li>
+                <li>• <b>૮:</b> આવકવેરો રીફંડ રૂ. ૨,૦૦૦</li>
+                <li>• <b>૧૦:</b> શેર વ્યાજ રૂ. ૧,૫૦૦</li>
+                <li>• <b>૧૨:</b> મોટર વેચાણ રૂ. ૩,૦૦૦</li>
+              </ul>
+            </div>
+
+            <div class="quadrant-box">
+              <h4>❓ ભાગ્ય (એકી)</h4>
+              <ul>
+                <li>• <b>૩:</b> રોટરી ઇનામ રૂ. ૨,૫૦૦</li>
+                <li>• <b>૫:</b> ક્રોસવર્ડ ઇનામ રૂ. ૧,૦૦૦</li>
+                <li>• <b>૭:</b> વેકેશન ખર્ચ રૂ. ૨,૦૦૦</li>
+                <li>• <b>૯:</b> મુંબઈ જાઓ (રૂ. ૪,૫૦૦)</li>
+                <li>• <b>૧૧:</b> કામગીરી ઇનામ રૂ. ૪,૦૦૦</li>
+              </ul>
+            </div>
+
+            <div class="quadrant-box">
+              <h4>❓ ભાગ્ય (બેકી)</h4>
+              <ul>
+                <li>• <b>૨:</b> શેરબજાર નુકશાન રૂ. ૨,૦૦૦</li>
+                <li>• <b>૪:</b> દારૂ અકસ્માત દંડ રૂ. ૧,૦૦૦</li>
+                <li>• <b>૬:</b> ઘર સમારકામ રૂ. ૧,૫૦૦</li>
+                <li>• <b>૮:</b> આગ નુકશાની રૂ. ૩,૦૦૦</li>
+                <li>• <b>૧૦:</b> જેલમાં જાઓ! ⛓️</li>
+                <li>• <b>૧૨:</b> આરામગૃહ જાઓ (૧ દાવ રદ)</li>
+              </ul>
+            </div>
+
+            <div class="quadrant-box">
+              <h4>🤝 વ્યવહાર (એકી)</h4>
+              <ul>
+                <li>• <b>૩:</b> જેલમાં જાઓ! ⛓️</li>
+                <li>• <b>૫:</b> કન્યા કેળવણી રૂ. ૧,૦૦૦</li>
+                <li>• <b>૭:</b> કુપોષણ ફંડ રૂ. ૨,૦૦૦</li>
+                <li>• <b>૯:</b> બાંધકામ ખર્ચ (રૂ. ૫૦/ઘર)</li>
+                <li>• <b>૧૧:</b> વિમાન ખર્ચ રૂ. ૧,૫૦૦</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- બોર્ડ મધ્ય શીર્ષક અને વોરા લોગો -->
+          <div class="center-header-branding">
+            <h2 class="main-game-title-3d">નવો વ્યાપાર</h2>
+            <div class="center-vora-logo">
+              <span>★</span> વોરા ટોય્ઝ એન્ડ સ્પોર્ટ્સ <span>★</span>
+            </div>
+          </div>
+
+          <!-- ૩D પાસા, દાવ ઇન્ડિકેટર અને રોલિંગ એક્શન ડોક -->
+          <div class="center-action-dock">
+            
+            <!-- લાઇવ ટર્ન ઇન્ડિકેટર બેનર -->
+            <div class="center-turn-banner" id="center-turn-indicator">
+              <span class="center-turn-pawn" id="center-turn-pawn">♟️</span>
+              <span class="center-turn-text" id="center-turn-text">તમારો દાવ (પાસા ફેંકો)</span>
+            </div>
+
+            <div class="dice-tray">
+              <div class="dice-cube" id="dice-1">
+                <div class="dice-pip" style="grid-column: 2; grid-row: 2;"></div>
+              </div>
+              <div class="dice-cube" id="dice-2">
+                <div class="dice-pip" style="grid-column: 2; grid-row: 2;"></div>
+              </div>
+              <div>
+                <div class="dice-sum-badge" id="dice-sum-val">૨</div>
+                <div class="dice-parity-tag" id="dice-parity-text">બેકી સંખ્યા</div>
+              </div>
+            </div>
+
+            <!-- મુખ્ય એક્શન બટન હબ -->
+            <div class="center-action-buttons-group">
+              <button class="btn-roll-dice" id="btn-roll-dice">
+                🎲 પાસા ફેંકો (Roll)
+              </button>
+              <button class="btn-bank-action btn-end-turn-center" id="btn-end-turn" disabled>
+                ✅ દાવ પૂર્ણ કરો (End Turn)
+              </button>
+            </div>
+
+            <!-- ક્વિક શોર્ટકટ્સ -->
+            <div class="center-quick-shortcuts">
+              <button class="btn-quick-shortcut" id="btn-manage-quick">
+                🏗️ મિલ્કતો & હોટેલ
+              </button>
+              <button class="btn-quick-shortcut" id="btn-loan-quick-center">
+                🤝 લોન સુવિધા
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- મોબાઇલ બોટમ બાર -->
+  <div class="mobile-action-bar">
+    <button class="btn-mobile-secondary" id="btn-loan-mobile">
+      <span>💰</span>
+      <span>લોન</span>
+    </button>
+    <button class="btn-mobile-secondary" id="btn-manage-mobile">
+      <span>🏗️</span>
+      <span>મિલ્કતો</span>
+    </button>
+    <button class="btn-mobile-primary" id="btn-roll-mobile">
+      <span>🎲</span>
+      <span>પાસા ફેંકો</span>
+    </button>
+    <button class="btn-mobile-secondary" id="btn-end-mobile" disabled style="background:#1b5e20;">
+      <span>✅</span>
+      <span>દાવ પૂરો</span>
+    </button>
+  </div>
+
+  <!-- =========================================================================
+       લુડો કિંગ સ્ટાઈલ ગેમ મોડ & કસ્ટમ ગોટી/કલર સિલેક્ટર (Ludo Launch Modal)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-ludo-launch">
+    <div class="modal-card ludo-modal-card">
+      <div class="modal-header">
+        <h3>🎮 નવો વ્યાપાર - રમત & ગોટી પસંદ કરો</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        
+        <p style="font-size:13px; color:#cfd8dc; margin-bottom:10px;">
+          તમે કોની સાથે રમવા માંગો છો તે મોડ પસંદ કરો:
+        </p>
+
+        <!-- ૩ બિગ મોડ કાર્ડ્સ -->
+        <div class="ludo-mode-grid">
+          
+          <div class="ludo-mode-card selected" data-mode="VS_COMPUTER">
+            <div class="ludo-mode-icon">🤖</div>
+            <div class="ludo-mode-title">કોમ્પ્યુટર સામે</div>
+            <div class="ludo-mode-desc">૧ માણસ vs ૧ થી ૫ સ્માર્ટ AI બોટ્સ</div>
+          </div>
+
+          <div class="ludo-mode-card" data-mode="FRIENDS_FAMILY">
+            <div class="ludo-mode-icon">👨‍👩‍👧‍👦</div>
+            <div class="ludo-mode-title">પરિવાર & મિત્રો</div>
+            <div class="ludo-mode-desc">બધા માણસ (નો બોટ્સ!)</div>
+          </div>
+
+          <div class="ludo-mode-card" data-mode="CUSTOM_MIX">
+            <div class="ludo-mode-icon">🔀</div>
+            <div class="ludo-mode-title">કસ્ટમ મિક્સ</div>
+            <div class="ludo-mode-desc">માણસ + કોમ્પ્યુટર મિક્સ</div>
+          </div>
+
+        </div>
+
+        <!-- ખેલાડીઓની સંખ્યા પસંદગી -->
+        <label style="font-size:13px; font-weight:bold; color:#ffd54f; display:block; margin-top:6px;">
+          ખેલાડીઓની સંખ્યા પસંદ કરો:
+        </label>
+        <div class="ludo-count-selector">
+          <button class="ludo-count-btn" data-count="2">૨ ખેલાડી</button>
+          <button class="ludo-count-btn" data-count="3">૩ ખેલાડી</button>
+          <button class="ludo-count-btn selected" data-count="4">૪ ખેલાડી</button>
+          <button class="ludo-count-btn" data-count="5">૫ ખેલાડી</button>
+          <button class="ludo-count-btn" data-count="6">૬ ખેલાડી (મહત્તમ)</button>
+        </div>
+
+        <!-- ખાસ: પ્લેયર ૧ ગોટીનો શેપ & રંગ કસ્ટમાઇઝેશન પેનલ -->
+        <div class="token-customizer-box">
+          <div class="token-customizer-header">
+            <div style="text-align:left;">
+              <h4 style="color:#ffd54f; font-size:14px; margin-bottom:2px;">🎨 તમારી ગોટીનો શેપ અને કલર પસંદ કરો:</h4>
+              <p style="font-size:11px; color:#cfd8dc;">તમને ગમતો રંગ અને આકાર સિલેક્ટ કરો</p>
+            </div>
+            <div class="token-preview-circle" id="player1-token-preview">
+            </div>
+          </div>
+
+          <!-- કલર પેલેટ (૮ વાઇબ્રન્ટ કલર્સ) -->
+          <div>
+            <label style="font-size:11px; font-weight:bold; color:#ffe082; display:block; margin-bottom:6px;">કલર પસંદ કરો:</label>
+            <div class="color-swatches-grid">
+              <button class="color-swatch-btn selected" style="background:#e53935;" data-color="#e53935" title="લાલ"></button>
+              <button class="color-swatch-btn" style="background:#43a047;" data-color="#43a047" title="લીલો"></button>
+              <button class="color-swatch-btn" style="background:#fbc02d;" data-color="#fbc02d" title="પીળો"></button>
+              <button class="color-swatch-btn" style="background:#1e88e5;" data-color="#1e88e5" title="વાદળી"></button>
+              <button class="color-swatch-btn" style="background:#8e24aa;" data-color="#8e24aa" title="જાંબલી"></button>
+              <button class="color-swatch-btn" style="background:#fb8c00;" data-color="#fb8c00" title="કેસરી"></button>
+              <button class="color-swatch-btn" style="background:#00acc1;" data-color="#00acc1" title="મોરપીંછ"></button>
+              <button class="color-swatch-btn" style="background:#e91e63;" data-color="#e91e63" title="ગુલાબી"></button>
+            </div>
+          </div>
+
+          <!-- શેપ સિલેક્ટર (૮ ૩D આકાર) -->
+          <div>
+            <label style="font-size:11px; font-weight:bold; color:#ffe082; display:block; margin-bottom:6px;">ગોટીનો આકાર પસંદ કરો:</label>
+            <div class="shape-choices-grid">
+              <button class="shape-choice-btn selected" data-shape="pawn">♟️ ક્લાસિક ગોટી</button>
+              <button class="shape-choice-btn" data-shape="car">🚗 વિન્ટેજ ગાડી</button>
+              <button class="shape-choice-btn" data-shape="ship">🚢 વહાણ</button>
+              <button class="shape-choice-btn" data-shape="plane">✈️ વિમાન</button>
+              <button class="shape-choice-btn" data-shape="hat">🎩 રોયલ ટોપી</button>
+              <button class="shape-choice-btn" data-shape="crown">👑 સોનેરી મુગટ</button>
+              <button class="shape-choice-btn" data-shape="horse">🐎 રજવાડી ઘોડો</button>
+              <button class="shape-choice-btn" data-shape="diamond">💎 ચમકતો હીરો</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ડાયનામિક સબ-ઓપ્શન્સ બોક્સ -->
+        <div id="ludo-mode-suboptions">
+        </div>
+
+        <!-- બિગ પ્લે બટન -->
+        <div style="margin-top:14px;">
+          <button class="ludo-start-btn" id="btn-ludo-start-game">
+            🚀 રમત શરૂ કરો (Start Game)
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       ખાસ: ઇન્ટરેક્ટિવ ભાડું વસૂલાત મોડલ (Rent Collection System)
+       ========================================================================= -->
+  <div class="modal-overlay" id="modal-rent-collection">
+    <div class="modal-card rent-modal-card">
+      <div class="modal-header" style="background: linear-gradient(135deg, #f57f17 0%, #e65100 100%);">
+        <h3>🏠 મિલ્કત ભાડું વસૂલાત (Rent Notice)</h3>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div style="font-size:48px; margin-bottom:8px;">💰</div>
+        <h4 style="font-size:20px; color:#ffd54f; margin-bottom:4px;" id="rent-modal-tile-name">અમદાવાદ</h4>
+        <p style="font-size:13px; color:#cfd8dc;">આ મિલ્કત અન્ય ખેલાડીની માલિકીની છે!</p>
+
+        <div class="rent-bill-box">
+          <div class="rent-bill-row">
+            <span>મિલ્કતના માલિક:</span>
+            <span id="rent-modal-owner-name"><b>રમેશ</b></span>
+          </div>
+          <div class="rent-bill-row">
+            <span>મુલાકાતી (આવનાર):</span>
+            <span id="rent-modal-visitor-name"><b>તમે</b></span>
+          </div>
+          <div class="rent-bill-row" style="border:none;">
+            <span>ચૂકવવાપાત્ર ભાડું:</span>
+            <div class="rent-bill-amount-badge" id="rent-modal-amount">રૂ. ૪૦૦</div>
+          </div>
+        </div>
+
+        <!-- મુલાકાત ઇતિહાસ અને ચૂકવેલ રકમનું ટ્રેકિંગ -->
+        <div class="rent-visit-stats-box" style="background:rgba(255,213,79,0.08); border:1px solid rgba(255,213,79,0.3); border-radius:10px; padding:10px; margin:10px 0; text-align:left; font-size:12.5px; line-height:1.6;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:#cfd8dc;">📍 મુલાકાત ક્રમ:</span>
+            <b id="rent-modal-visit-count" style="color:#ffd54f;">આ મિલ્કત પર ૧લી વાર</b>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:#cfd8dc;">📊 મુલાકાતીએ આજ સુધી ચૂકવેલ કુલ:</span>
+            <b id="rent-modal-total-paid-by-visitor" style="color:#81c784;">રૂ. ૪૦૦</b>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#cfd8dc;">🏆 આ મિલ્કતની કુલ કમાણી:</span>
+            <b id="rent-modal-property-total-revenue" style="color:#ffb74d;">રૂ. ૪૦૦</b>
+          </div>
+        </div>
+
+        <p style="font-size:12px; color:#ffd54f; line-height:1.4;">
+          નિયમ મુજબ મુલાકાતી ખેલાડીએ માલિકને નક્કી કરેલું ભાડું ચૂકવવું પડશે.
+        </p>
+      </div>
+      <div class="modal-footer" style="justify-content:center;">
+        <button class="btn-bank-action" id="btn-rent-collect-action" style="width:100%; font-size:16px;">
+          💰 ભાડું વસૂલ કરો / ચૂકવો
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- મિલ્કત ખરીદી કાર્ડ મોડલ -->
+  <div class="modal-overlay" id="modal-property">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>મિલ્કત દસ્તાવેજ (Deed Card)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="deed-card">
+          <div class="deed-header" id="prop-modal-header" style="background:#2e7d32;">
+            <h2 id="prop-modal-title">અમદાવાદ</h2>
+            <div id="prop-modal-sub" style="font-size:12px; opacity:0.85;">AHMEDABAD</div>
+          </div>
+          <p style="text-align:center; font-weight:800; font-size:16px; margin-bottom:8px;">
+            ખરીદ કિંમત: <span id="prop-modal-price" style="color:#b71c1c;">રૂ. ૪,૦૦૦</span>
+          </p>
+          <table class="deed-rent-table" id="prop-modal-rent-table">
+          </table>
+        </div>
+        <!-- તમારી પાસે પૈસા ખૂટે છે એલર્ટ બોક્સ -->
+        <div id="prop-insufficient-funds-alert" style="display:none; background:rgba(211,47,47,0.18); border:1px solid #ef5350; border-radius:10px; padding:10px; margin-top:10px; text-align:center;">
+          <div style="color:#ef5350; font-weight:bold; font-size:14px; margin-bottom:4px;">⚠️ તમારી પાસે પૈસા ખૂટે છે!</div>
+          <p id="prop-shortage-desc" style="font-size:12px; color:#cfd8dc; margin-bottom:8px;">
+            આ મિલ્કત ખરીદવા માટે રોકડ ખૂટે છે.
+          </p>
+          <button class="btn-bank-action" id="btn-prop-quick-loan" style="width:100%; font-size:13px; background:linear-gradient(135deg, #f57f17, #e65100);">
+            💰 લોન સુવિધા ખોલો (Take Loan)
+          </button>
+        </div>
+
+        <p id="prop-buy-question" style="font-size:14px; color:#cfd8dc; text-align:center; font-weight:bold; margin-top:8px;">
+          શું તમે આ મિલ્કત ખરીદવા માંગો છો?
+        </p>
+      </div>
+      <div class="modal-footer" style="flex-wrap:wrap; gap:8px; justify-content:center;">
+        <button class="btn-icon btn-modal-cancel" id="btn-pass-prop">❌ પાસ કરો (Pass)</button>
+        <button class="btn-bank-action" id="btn-auction-prop" style="width:auto; padding:10px 18px; background:linear-gradient(135deg, #d84315, #bf360c);">
+          🔨 જાહેર હરાજી (Auction)
+        </button>
+        <button class="btn-bank-action" id="btn-buy-prop" style="width:auto; padding:10px 22px;">
+          🟢 ખરીદો (Buy)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- જાહેર મિલ્કત હરાજી મોડલ (Live Public Auction Modal) -->
+  <div class="modal-overlay" id="modal-auction">
+    <div class="modal-card auction-modal-card">
+      <div class="modal-header" style="background: linear-gradient(135deg, #d84315 0%, #bf360c 100%);">
+        <h3>🔨 જાહેર મિલ્કત હરાજી (Public Auction)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        
+        <!-- મિલ્કત કાર્ડ -->
+        <div class="auction-property-card" style="border:2px solid #ffd54f; border-radius:10px; padding:10px 14px; margin-bottom:12px; background:rgba(0,0,0,0.35);">
+          <div id="auction-color-bar" style="height:8px; border-radius:4px; margin-bottom:8px; background:#2e7d32;"></div>
+          <h3 id="auction-tile-name" style="font-size:22px; color:#fff; margin-bottom:2px;">અમદાવાદ</h3>
+          <p style="font-size:12px; color:#cfd8dc;">મૂળ સરકારી કિંમત: <b id="auction-base-price" style="color:#ffd54f;">રૂ. ૪,૦૦૦</b></p>
+        </div>
+
+        <!-- ચાલુ સૌથી ઊંચી બોલી -->
+        <div class="auction-bid-display">
+          <div style="font-size:12px; color:#cfd8dc; margin-bottom:2px;">સૌથી ઊંચી બોલી (Current Highest Bid):</div>
+          <div id="auction-highest-bid" style="font-size:30px; font-weight:900; color:#81c784;">રૂ. ૧,૦૦૦</div>
+          <div id="auction-highest-bidder" style="font-size:13.5px; color:#ffd54f; font-weight:bold; margin-top:3px;">બોલી લગાવનાર: હજી કોઈ નહીં</div>
+        </div>
+
+        <!-- ચાલુ બોલીદાર સ્ટેટસ -->
+        <div id="auction-turn-status" style="font-size:13.5px; font-weight:bold; color:#fff; margin:12px 0 8px 0; min-height:22px;">
+          👉 તમારો વારો: નવી બોલી લગાવો અથવા ખસી જાઓ
+        </div>
+
+        <!-- બોલી લગાવવા માટેના બટનો (માણસ માટે) -->
+        <div id="auction-human-controls" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn-auction-raise" data-raise="100">+ રૂ. ૧૦૦</button>
+            <button class="btn-auction-raise" data-raise="200">+ રૂ. ૨૦૦</button>
+            <button class="btn-auction-raise" data-raise="500">+ રૂ. ૫૦૦</button>
+            <button class="btn-auction-raise" data-raise="1000">+ રૂ. ૧,૦૦૦</button>
+          </div>
+          <button class="btn-icon" id="btn-auction-fold" style="background:rgba(211,47,47,0.2); border-color:#e53935; color:#ff8a80; padding:10px; font-size:13px; font-weight:bold; width:100%;">
+            ❌ બોલીમાંથી ખસી જાઓ (Pass / Fold)
+          </button>
+        </div>
+
+        <!-- લાઈવ બોલી હિસ્ટ્રી -->
+        <div id="auction-history-log" style="margin-top:12px; background:rgba(0,0,0,0.4); border-radius:8px; padding:8px 10px; max-height:85px; overflow-y:auto; font-size:11.5px; color:#cfd8dc; text-align:left;">
+          <div>🔨 હરાજી શરૂ થઈ ગઈ છે!</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ભાગ્ય અને વ્યવહાર ઇવેન્ટ મોડલ -->
+  <div class="modal-overlay" id="modal-event">
+    <div class="modal-card">
+      <div class="modal-header" style="background: linear-gradient(135deg, #e65100 0%, #bf360c 100%);">
+        <h3 id="event-modal-title">ભાગ્ય (Bhagya)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center; padding:24px 18px;">
+        <div style="font-size:52px; margin-bottom:12px;">📜</div>
+        <p id="event-modal-text" style="font-size:18px; font-weight:800; color:#fff; line-height:1.5;">
+          પાસાના નંબર મુજબ વિગત અહીં આવશે.
+        </p>
+      </div>
+      <div class="modal-footer" style="justify-content:center;">
+        <button class="btn-bank-action" id="btn-event-ok" style="width:auto; min-width:140px;">
+          ઠીક છે (OK)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- બેંક અને ખેલાડી લોન મોડલ (Bank & Player-to-Player Loan) -->
+  <div class="modal-overlay" id="modal-loan">
+    <div class="modal-card" style="max-width:520px;">
+      <div class="modal-header">
+        <h3>💰 લોન સુવિધા (Bank & Player Loans)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+
+      <!-- લોન ટેબ્સ -->
+      <div class="loan-tabs-row" style="display:flex; gap:8px; padding:10px 14px 0 14px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <button class="loan-tab-btn active" id="tab-btn-bank-loan" style="flex:1; padding:8px; background:rgba(255,213,79,0.15); border:1px solid #ffd54f; border-radius:6px; color:#ffd54f; font-weight:bold; cursor:pointer;">
+          🏛️ સેન્ટ્રલ બેંક લોન
+        </button>
+        <button class="loan-tab-btn" id="tab-btn-p2p-loan" style="flex:1; padding:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#cfd8dc; font-weight:bold; cursor:pointer;">
+          🤝 ખેલાડી પાસેથી લોન (P2P)
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+        <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:10px;">
+          <div>
+            <div style="font-size:12px; color:#b0bec5;">તમારી વર્તમાન રોકડ</div>
+            <div id="loan-player-cash" style="font-size:18px; font-weight:bold; color:#81c784;">રૂ. ૦</div>
+          </div>
+          <div>
+            <div style="font-size:12px; color:#b0bec5;">ચાલુ લોન દેવું</div>
+            <div id="loan-player-active" style="font-size:18px; font-weight:bold; color:#ef5350;">રૂ. ૦</div>
+          </div>
+        </div>
+
+        <!-- સક્રિય લોન સ્લોટ્સ ટ્રેકર (મહત્તમ ૩ લોન નિયમ!) -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; margin-bottom:12px; border:1px solid rgba(255,213,79,0.35);">
+          <div>
+            <span style="font-size:12px; color:#cfd8dc;">સક્રિય લોન સ્લોટ્સ:</span>
+            <span class="loan-slots-badge" id="loan-slots-counter">૦ / ૩ વપરાયેલ</span>
+          </div>
+          <div id="loan-slot-status-msg" style="font-size:11.5px; color:#81c784; font-weight:bold;">
+            ✅ ૩ લોન સ્લોટ ઉપલબ્ધ
+          </div>
+        </div>
+
+        <!-- ટેબ ૧: સેન્ટ્રલ બેંક લોન -->
+        <div id="loan-tab-content-bank">
+          <p style="font-size:14px; font-weight:bold; color:#ffd54f;">બેંક પાસેથી લોન રકમ પસંદ કરો:</p>
+          <div class="loan-amount-presets">
+            <button class="loan-preset-btn" data-amount="1000">રૂ. ૧,૦૦૦</button>
+            <button class="loan-preset-btn selected" data-amount="2000">રૂ. ૨,૦૦૦</button>
+            <button class="loan-preset-btn" data-amount="5000">રૂ. ૫,૦૦૦</button>
+            <button class="loan-preset-btn" data-amount="10000">રૂ. ૧૦,૦૦૦</button>
+          </div>
+
+          <div class="loan-terms-box">
+            <b>📌 સેન્ટ્રલ બેંક નિયમો:</b><br>
+            • બેંક લોન પર <b>૧૦% વ્યાજ</b> લાગુ પડશે (દા.ત. રૂ. ૫,૦૦૦ ની લોન પર રૂ. ૫,૫૦૦ પરત કરવાપાત્ર).<br>
+            • તમે એકસાથે <b>વધુમાં વધુ ૩ સક્રિય લોન</b> રાખી શકો છો.<br>
+            • નાણાં સીધા બેંક તિજોરીમાંથી તમારા ખાતામાં જમા થશે.
+          </div>
+
+          <button class="btn-bank-action" id="btn-take-loan" style="width:100%; margin-top:10px;">
+            🏦 બેંક લોન મંજૂર કરો (Get Loan)
+          </button>
+
+          <!-- કસ્ટમ લોન ચૂકવણી બોક્સ (Custom Amount Repayment) -->
+          <div class="custom-repay-box" style="margin-top:14px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:12px;">
+            <div style="font-size:13px; font-weight:bold; color:#ffd54f; margin-bottom:4px;">
+              💸 કસ્ટમ રકમ પરત ચૂકવો (Custom Repayment):
+            </div>
+            <p style="font-size:11.5px; color:#cfd8dc; margin-bottom:8px;">
+              બેંકને તમારી અનુકૂળતા મુજબ કોઈપણ રકમ (અંશતઃ કે પૂરી) ચૂકવી શકો છો:
+            </p>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+              <button class="btn-custom-repay-preset" data-amount="500">રૂ. ૫૦૦</button>
+              <button class="btn-custom-repay-preset" data-amount="1000">રૂ. ૧,૦૦૦</button>
+              <button class="btn-custom-repay-preset" data-amount="2000">રૂ. ૨,૦૦૦</button>
+              <button class="btn-custom-repay-preset" data-amount="5000">રૂ. ૫,૦૦૦</button>
+              <button class="btn-custom-repay-preset" data-amount="full">પૂરી રકમ</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="input-custom-loan-repay" class="ludo-input" placeholder="રકમ લખો (દા.ત. ૧૦૦૦)" style="flex:1; padding:8px;">
+              <button class="btn-bank-action" id="btn-do-custom-repay" style="width:auto; padding:8px 16px; background:linear-gradient(135deg, #2e7d32, #1b5e20);">
+                ચૂકવો (Pay)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ટેબ ૨: ખેલાડી પાસેથી લોન (Player-to-Player) -->
+        <div id="loan-tab-content-p2p" style="display:none;">
+          <label style="font-size:13px; font-weight:bold; color:#ffd54f; display:block; margin-bottom:6px;">
+            કોની પાસેથી લોન લેવી છે? (ખેલાડી પસંદ કરો):
+          </label>
+          <select id="p2p-lender-select" class="ludo-input" style="width:100%; margin-bottom:12px; padding:8px;">
+          </select>
+
+          <p style="font-size:13px; font-weight:bold; color:#ffd54f; margin-bottom:6px;">લોનની રકમ પસંદ કરો:</p>
+          <div class="p2p-amount-presets" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:12px;">
+            <button class="p2p-preset-btn loan-preset-btn selected" data-amount="1000">રૂ. ૧,૦૦૦</button>
+            <button class="p2p-preset-btn loan-preset-btn" data-amount="2000">રૂ. ૨,૦૦૦</button>
+            <button class="p2p-preset-btn loan-preset-btn" data-amount="3000">રૂ. ૩,૦૦૦</button>
+            <button class="p2p-preset-btn loan-preset-btn" data-amount="5000">રૂ. ૫,૦૦૦</button>
+          </div>
+
+          <div class="loan-terms-box" style="border-color:#81c784; background:rgba(76,175,80,0.08);">
+            <b>🤝 ખેલાડી લોન શરતો:</b><br>
+            • ૧૦% વ્યાજ સહિત પૂરી રકમ તે ખેલાડીને પરત ચૂકવાશે.<br>
+            • જો સામેનો ખેલાડી AI બોટ હશે તો તે પોતાની પાસે પર્યાપ્ત રોકડ જોઈને લોન મંજૂર કરશે.
+          </div>
+
+          <button class="btn-bank-action" id="btn-request-p2p-loan" style="width:100%; margin-top:12px; background:linear-gradient(135deg, #2e7d32, #1b5e20);">
+            🤝 ખેલાડી પાસેથી લોન મેળવો
+          </button>
+
+          <!-- સક્રિય ખેલાડી લોનનું લિસ્ટ -->
+          <div id="p2p-active-loans-box" style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+            <h5 style="color:#ffd54f; font-size:13px; margin-bottom:6px;">તમારી ચાલુ ખેલાડી લોન:</h5>
+            <div id="p2p-active-loans-list">
+              <p style="font-size:12px; color:#b0bec5;">કોઈ ચાલુ ખેલાડી લોન નથી.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-icon modal-close">બંધ કરો</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- મિલ્કત સંચાલન અને બાંધકામ મોડલ -->
+  <div class="modal-overlay" id="modal-manage">
+    <div class="modal-card" style="max-width:560px;">
+      <div class="modal-header">
+        <h3>🏗️ તમારી મિલ્કતો અને બાંધકામ</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="manage-props-list">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-icon modal-close">બંધ કરો</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ખેલાડી મિલ્કત પોર્ટફોલિયો & મોનોપોલી ટ્રેકર (કોઈપણ ખેલાડીની મિલ્કતો જોઈ શકાય) -->
+  <div class="modal-overlay" id="modal-player-portfolio">
+    <div class="modal-card" style="max-width:640px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #1565c0, #0d47a1);">
+        <h3>🔍 ખેલાડી મિલ્કત પોર્ટફોલિયો & રંગ જૂથો</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      
+      <!-- ખેલાડી પસંદગી પિલ્સ (Switch Players) -->
+      <div class="portfolio-player-tabs" id="portfolio-player-tabs" style="display:flex; gap:6px; padding:10px 14px; overflow-x:auto; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.08);">
+      </div>
+
+      <div class="modal-body" id="portfolio-modal-body" style="max-height:65vh; overflow-y:auto;">
+        <!-- Dynamic Player Assets & Monopoly Sets will render here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-bank-action modal-close" style="width:auto;">બંધ કરો</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- જેલ દંડ મોડલ -->
+  <div class="modal-overlay" id="modal-jail">
+    <div class="modal-card">
+      <div class="modal-header" style="background:#212121;">
+        <h3>⛓️ તમે જેલમાં છો (In Jail)</h3>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <p style="margin-bottom:12px; font-size:15px;">
+          જેલમાંથી મુક્ત થવા માટે તમારી પાસે નીચેના વિકલ્પો છે:
+        </p>
+        <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; line-height:1.6;">
+          <p>૧. બેંકને <b>રૂ. ૫૦૦ દંડ</b> ભરીને તાત્કાલિક મુક્ત થાઓ.</p>
+          <p>૨. અથવા ૩ દાવ સુધી રાહ જુઓ.</p>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:center; gap:12px;">
+        <button class="btn-icon" id="btn-jail-stay">જેલમાં જ રહો</button>
+        <button class="btn-bank-action" id="btn-jail-pay" style="width:auto;">
+          રૂ. ૫૦૦ દંડ ભરો
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- રમત નિયમો મોડલ -->
+  <div class="modal-overlay" id="modal-rules">
+    <div class="modal-card" style="max-width:580px;">
+      <div class="modal-header">
+        <h3>📜 નવો વ્યાપાર રમતના અધિકૃત નિયમો</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size:14px; line-height:1.6; color:#cfd8dc;">
+        <h4 style="color:#ffd54f;">૧. રમતનો હેતુ:</h4>
+        <p>મિલ્કતો ખરીદી, તેના પર ઘરો અને હોટેલો બાંધીને અન્ય ખેલાડીઓ પાસેથી ભાડું વસૂલવું અને સૌથી ધનવાન વેપારી બનીને વિજયી થવું.</p>
+        
+        <h4 style="color:#ffd54f; margin-top:10px;">૨. સ્માર્ટ AI કોમ્પ્યુટર બોટ્સ:</h4>
+        <p>કોમ્પ્યુટર બોટ્સ માણસની જેમ જ વ્યૂહાત્મક રીતે રમે છે - તેઓ યોગ્ય સમયે જમીન ખરીદે છે, મોનોપોલી અટકાવે છે, અને જરૂર પડે બેંક પાસેથી લોન પણ લે છે!</p>
+
+        <h4 style="color:#ffd54f; margin-top:10px;">૩. ભાડું વસૂલવાની સિસ્ટમ:</h4>
+        <p>જ્યારે કોઈ ખેલાડી તમારી મિલ્કતમાં આવે ત્યારે તમને લાઈવ ભાડું વસૂલ કરવાનો પોપ-અપ મળશે. ભાડાની રકમ સીધી તમારા ખાતામાં જમા થશે!</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-bank-action modal-close" style="width:auto;">સમજાઈ ગયું (Close)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- અસલ બોર્ડ ફોટો મોડલ -->
+  <div class="modal-overlay" id="modal-board-ref">
+    <div class="modal-card" style="max-width:750px; background:#0d1830;">
+      <div class="modal-header">
+        <h3>🖼️ અસલ વોરા નવો વ્યાપાર બોર્ડ</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center; padding:10px;">
+        <img src="assets/board_reference.jpg" alt="નવો વ્યાપાર બોર્ડ" style="max-width:100%; max-height:75vh; border-radius:8px; box-shadow:0 8px 25px rgba(0,0,0,0.8);">
+        <p style="font-size:13px; color:#ffd54f; margin-top:8px;">
+          આ તમે અપલોડ કરેલ ઓરિજિનલ બોર્ડ છે, જેના આધારે આ ડિજિટલ ગેમ બનાવવામાં આવી છે.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-bank-action modal-close" style="width:auto;">બંધ કરો</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- મુખ્ય સિંગલ બંડલ્ડ સ્ક્રિપ્ટ -->
+  <script src="app.js"></script>
+</body>
+</html>
