@@ -23,6 +23,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   font-family: 'Hind Vadodara', 'Poppins', sans-serif;
   background: radial-gradient(circle at 50% 15%, #152752 0%, #060a17 100%);
@@ -545,7 +551,7 @@ body {
 }
 
 /* ==========================================================================
-   CENTER BOARD CONTAINER (૧૦ x ૧૦ પેરીમીટર)
+   CENTER BOARD CONTAINER (૧૦ x ૧૦ પેરીમીટર) & ZOOM ENGINE
    ========================================================================== */
 .board-wrapper {
   display: flex;
@@ -554,7 +560,86 @@ body {
   width: 100%;
   max-width: 980px;
   margin: 0 auto;
-  gap: 10px;
+  gap: 8px;
+}
+
+/* 60-120FPS Mobile Zoom & Pan Toolbar */
+.board-zoom-toolbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(14, 24, 48, 0.9);
+  border: 1px solid rgba(255, 213, 79, 0.3);
+  border-radius: 12px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.zoom-toolbar-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #ffd54f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.zoom-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-zoom-action {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 213, 79, 0.35);
+  color: #ffffff;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-zoom-action:active,
+.btn-zoom-action.active {
+  background: var(--gold-grad);
+  color: #1a1000;
+  border-color: #ffd54f;
+  box-shadow: 0 0 10px rgba(255, 213, 79, 0.6);
+  transform: scale(1.02);
+}
+
+.zoom-pan-hint {
+  font-size: 11px;
+  color: #81c784;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Board Pan Viewport: Clips zoom neatly so page never scrolls horizontally */
+.board-pan-viewport {
+  width: 100%;
+  max-width: 980px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--bg-board-outer);
+  touch-action: none; /* Custom GPU pinch & pan */
+  contain: paint layout;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .board-container {
@@ -562,9 +647,8 @@ body {
   max-width: 980px;
   aspect-ratio: 1 / 1;
   background: var(--bg-board-outer);
-  border: 5px solid #1a2a4f;
+  border: 4px solid #1a2a4f;
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
   position: relative;
   display: grid;
   grid-template-columns: 1.35fr repeat(8, 1fr) 1.35fr;
@@ -572,8 +656,11 @@ body {
   padding: 4px;
   gap: 2px;
   user-select: none;
+  -webkit-user-select: none;
+  transform-origin: center center;
+  will-change: transform;
+  transform: translate3d(0, 0, 0) scale(1);
   contain: layout;
-  transform: translateZ(0);
 }
 
 /* Tile Styles */
@@ -740,9 +827,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
   will-change: transform;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .player-pawn-wrapper.pawn-hopping {
@@ -1794,23 +1881,28 @@ body.senior-mode .center-turn-text {
 /* Small screen tweaks & Mobile Ultra-Smooth 60FPS Optimizations */
 @media (max-width: 768px) {
   /* Fast touch interactions: remove 300ms mobile touch delay */
-  button, .board-tile, .btn-icon, .btn-roll-dice, .btn-bank-action, .ludo-mode-card, .ludo-count-btn {
+  button, .board-tile, .btn-icon, .btn-roll-dice, .btn-bank-action, .ludo-mode-card, .ludo-count-btn, .btn-zoom-action {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
 
   /* GPU Layer optimizations on mobile */
-  .board-container, .board-wrapper, .player-pawn-wrapper, .dice-cube {
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+  .board-container, .board-wrapper, .player-pawn-wrapper, .dice-cube, .board-pan-viewport {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
   }
 
   /* Disable expensive backdrop blurs on mobile */
-  .board-tile, .player-item, .panel-card, .modal-card {
+  * {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  /* Stop continuous CPU idle animations on mobile */
+  .player-item.active::after {
+    animation: none !important;
   }
 }
 
