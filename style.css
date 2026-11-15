@@ -356,15 +356,14 @@ body {
 .player-item.active {
   background: linear-gradient(135deg, rgba(255, 213, 79, 0.18) 0%, rgba(255, 179, 0, 0.08) 100%);
   border: 2px solid #ffd54f;
-  box-shadow: 0 0 22px rgba(255, 213, 79, 0.55), inset 0 0 12px rgba(255, 213, 79, 0.15);
-  animation: active-player-pulse 1.6s infinite alternate ease-in-out;
-  transform: scale(1.02);
+  box-shadow: 0 4px 14px rgba(255, 213, 79, 0.35);
+  transform: translateZ(0);
   z-index: 2;
 }
 
 @keyframes active-player-pulse {
-  0% { box-shadow: 0 0 12px rgba(255, 213, 79, 0.4); border-color: #ffd54f; }
-  100% { box-shadow: 0 0 26px rgba(255, 213, 79, 0.85), inset 0 0 14px rgba(255, 213, 79, 0.25); border-color: #fff9c4; }
+  0% { border-color: #ffd54f; }
+  100% { border-color: #fff9c4; }
 }
 
 .player-item.active::after {
@@ -565,7 +564,7 @@ body {
   background: var(--bg-board-outer);
   border: 5px solid #1a2a4f;
   border-radius: 14px;
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
   position: relative;
   display: grid;
   grid-template-columns: 1.35fr repeat(8, 1fr) 1.35fr;
@@ -573,6 +572,8 @@ body {
   padding: 4px;
   gap: 2px;
   user-select: none;
+  contain: layout;
+  transform: translateZ(0);
 }
 
 /* Tile Styles */
@@ -586,7 +587,8 @@ body {
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
+  transition: border-color 0.15s;
+  contain: layout paint;
 }
 
 .board-tile:active, .board-tile:hover {
@@ -738,14 +740,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.85));
-  transition: transform 0.15s ease;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .player-pawn-wrapper.pawn-hopping {
-  animation: pawn-bounce 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: pawn-bounce 0.18s cubic-bezier(0.2, 1.4, 0.4, 1);
   z-index: 25;
-  filter: drop-shadow(0 6px 14px rgba(255, 213, 79, 0.95));
 }
 
 /* Increased Pawns Size */
@@ -765,9 +767,9 @@ body {
 }
 
 @keyframes pawn-bounce {
-  0% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-22px) scale(1.4); }
-  100% { transform: translateY(0) scale(1); }
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -18px, 0) scale(1.25); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
 /* ==========================================================================
@@ -1789,12 +1791,35 @@ body.senior-mode .center-turn-text {
 .log-entry.log-jail { border-left-color: #f44336; }
 .log-entry.log-loan { border-left-color: #ff9800; }
 
-/* Small screen tweaks */
+/* Small screen tweaks & Mobile Ultra-Smooth 60FPS Optimizations */
+@media (max-width: 768px) {
+  /* Fast touch interactions: remove 300ms mobile touch delay */
+  button, .board-tile, .btn-icon, .btn-roll-dice, .btn-bank-action, .ludo-mode-card, .ludo-count-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* GPU Layer optimizations on mobile */
+  .board-container, .board-wrapper, .player-pawn-wrapper, .dice-cube {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Disable expensive backdrop blurs on mobile */
+  .board-tile, .player-item, .panel-card, .modal-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
 @media (max-width: 600px) {
   .board-container {
     border-width: 3px;
     padding: 2px;
     gap: 1px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
   .tile-title {
     font-size: 8px;

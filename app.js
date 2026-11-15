@@ -483,7 +483,12 @@ const DEFAULT_PLAYERS = [
 
 // icons.js - તમામ શહેરો, ચિહ્નો અને ૮ પ્રકારના કસ્ટમ ૩D ટોકન્સ (Custom 3D Pawn Shapes)
 
+const _tokenCache = {};
+
 function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
+  const cacheKey = `${shape}_${color}_${id}`;
+  if (_tokenCache[cacheKey]) return _tokenCache[cacheKey];
+
   const gradId = `token-grad-${id}`;
   const darkGradId = `token-dark-${id}`;
 
@@ -570,7 +575,7 @@ function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
 
   const selectedPath = shapes[shape] || shapes.pawn;
 
-  return `
+  const svgString = `
     <svg viewBox="0 0 30 38" class="custom-token-svg">
       <defs>
         <radialGradient id="${gradId}" cx="35%" cy="30%" r="65%">
@@ -586,6 +591,8 @@ function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
       ${selectedPath}
     </svg>
   `;
+  _tokenCache[cacheKey] = svgString;
+  return svgString;
 }
 
 // Backward compatibility alias
@@ -948,7 +955,7 @@ function getTileIcon(iconName) {
 }
 
 
-// audio.js - Web Audio API આધારિત સાઉન્ડ ઇફેક્ટ્સ (કોઈ એક્સ્ટર્નલ MP3 ફાઇલ વગર ૧૦૦% ઓફલાઇન)
+// audio.js - Web Audio API આધારિત સાઉન્ડ ઇફેક્ટ્સ (૧૦૦% સેફ, ક્યારેય ક્રેક કે એરર ન આપે)
 
 class SoundFX {
   constructor() {
@@ -957,12 +964,18 @@ class SoundFX {
   }
 
   init() {
-    if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioContext();
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    try {
+      if (!this.ctx && typeof window !== 'undefined') {
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtxClass) {
+          this.ctx = new AudioCtxClass();
+        }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    } catch (e) {
+      // Audio not permitted without gesture on some mobile browsers
     }
   }
 
@@ -974,154 +987,183 @@ class SoundFX {
   // પાસા ફેંકવાનો અવાજ (Dice Roll Clatter)
   playDice() {
     if (this.isMuted) return;
-    this.init();
-    const count = 6;
-    for (let i = 0; i < count; i++) {
-      setTimeout(() => {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const freq = 120 + Math.random() * 280;
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        
-        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const count = 4;
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          try {
+            if (!this.ctx || this.ctx.state !== 'running') return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const freq = 140 + Math.random() * 260;
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
 
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 0.06);
-      }, i * 65);
-    }
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.055);
+          } catch (err) {}
+        }, i * 55);
+      }
+    } catch (e) {}
   }
 
   // કૂકરી ચાલવાનો અવાજ (Token Step)
   playStep() {
     if (this.isMuted) return;
-    this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(750, this.ctx.currentTime + 0.06);
 
-    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.09);
+      gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.07);
 
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.08);
+    } catch (e) {}
   }
 
   // પૈસાનો ખણખણાટ / કેશ ટ્રાન્ઝેક્શન (Coins & Cash "Ka-Ching")
   playCash() {
     if (this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    
-    // First high chime
-    const osc1 = this.ctx.createOscillator();
-    const gain1 = this.ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(987.77, now); // B5
-    gain1.gain.setValueAtTime(0.25, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    osc1.connect(gain1);
-    gain1.connect(this.ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.26);
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const now = this.ctx.currentTime;
+      
+      const osc1 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(987.77, now);
+      gain1.gain.setValueAtTime(0.2, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc1.connect(gain1);
+      gain1.connect(this.ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.22);
 
-    // Second bell chime
-    const osc2 = this.ctx.createOscillator();
-    const gain2 = this.ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1318.51, now + 0.1); // E6
-    gain2.gain.setValueAtTime(0.3, now + 0.1);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-    osc2.connect(gain2);
-    gain2.connect(this.ctx.destination);
-    osc2.start(now + 0.1);
-    osc2.stop(now + 0.46);
+      const osc2 = this.ctx.createOscillator();
+      const gain2 = this.ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1318.51, now + 0.08);
+      gain2.gain.setValueAtTime(0.25, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc2.connect(gain2);
+      gain2.connect(this.ctx.destination);
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.37);
+    } catch (e) {}
   }
 
   // બેંક લોન મંજૂર સાઉન્ડ (Bank Loan Fanfare)
   playLoan() {
     if (this.isMuted) return;
-    this.init();
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    notes.forEach((freq, idx) => {
-      const startTime = this.ctx.currentTime + idx * 0.08;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, startTime);
-      gain.gain.setValueAtTime(0.2, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + 0.22);
-    });
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const startTime = this.ctx.currentTime + idx * 0.07;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.18, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.18);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.2);
+      });
+    } catch (e) {}
   }
 
   // મિલ્કત ખરીદવાનો વિજયી અવાજ (Buy Property Fanfare)
   playBuy() {
     if (this.isMuted) return;
-    this.init();
-    const notes = [440, 554.37, 659.25]; // A4, C#5, E5
-    notes.forEach((freq, idx) => {
-      const startTime = this.ctx.currentTime + idx * 0.1;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, startTime);
-      gain.gain.setValueAtTime(0.22, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + 0.26);
-    });
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const notes = [440, 554.37, 659.25];
+      notes.forEach((freq, idx) => {
+        const startTime = this.ctx.currentTime + idx * 0.09;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.2, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.24);
+      });
+    } catch (e) {}
   }
 
   // જેલ અથવા નુકશાનનો બઝર (Jail / Penalty Slam)
   playJail() {
     if (this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
 
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.46);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    } catch (e) {}
+  }
+
+  playVictory() {
+    this.playBuy();
+  }
+
+  playPenalty() {
+    this.playJail();
   }
 
   // બટન ક્લિક
   playClick() {
     if (this.isMuted) return;
-    this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.05);
+    try {
+      this.init();
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(750, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.035);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.04);
+    } catch (e) {}
   }
 }
 
@@ -1158,6 +1200,7 @@ class NavoVyaparGame {
     this.selectedP2PLenderId = null;
     this.selectedP2PAmount = 1000;
     this.notificationTimer = null;
+    this.isGameActive = false;
   }
 
   init() {
@@ -1165,9 +1208,144 @@ class NavoVyaparGame {
     this.updateActiveTileCard(0);
     this.setupEventListeners();
     
-    // Show Ludo King style Welcome Mode Modal on launch!
-    this.openModal('modal-ludo-launch');
-    this.updateLudoLaunchUI();
+    // Check if there is an existing saved game to resume on refresh!
+    const resumed = this.loadGameState();
+    if (!resumed) {
+      // Show Ludo King style Welcome Mode Modal on launch!
+      this.openModal('modal-ludo-launch');
+      this.updateLudoLaunchUI();
+    }
+  }
+
+  // =========================================================================
+  // LOCALSTORAGE PERSISTENCE (રીફ્રેશ પર રમત ચાલુ રહેવી - AUTO SAVE & RESUME)
+  // =========================================================================
+  saveGameState() {
+    if (!this.isGameActive || !this.players || this.players.length === 0) return;
+    try {
+      const state = {
+        version: 1,
+        savedAt: Date.now(),
+        isGameActive: this.isGameActive,
+        players: this.players,
+        currentPlayerIndex: this.currentPlayerIndex,
+        turnPhase: this.turnPhase,
+        bank: this.bank,
+        dice: this.dice,
+        diceSum: this.diceSum,
+        logs: this.logs.slice(0, 50),
+        propertyStats: this.propertyStats,
+        selectedGameMode: this.selectedGameMode,
+        selectedPlayerCount: this.selectedPlayerCount,
+        player1CustomShape: this.player1CustomShape,
+        player1CustomColor: this.player1CustomColor,
+        seniorMode: this.seniorMode
+      };
+      localStorage.setItem('navo_vyapar_game_save_v1', JSON.stringify(state));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }
+
+  loadGameState() {
+    try {
+      const raw = localStorage.getItem('navo_vyapar_game_save_v1');
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      if (!state || !state.isGameActive || !Array.isArray(state.players) || state.players.length === 0) {
+        return false;
+      }
+
+      this.isGameActive = true;
+      this.players = state.players;
+      this.currentPlayerIndex = state.currentPlayerIndex || 0;
+      this.turnPhase = state.turnPhase || 'ROLL';
+      this.bank = state.bank || { cash: 350000, totalLoans: 0 };
+      this.dice = state.dice || [1, 1];
+      this.diceSum = state.diceSum || 2;
+      this.logs = Array.isArray(state.logs) ? state.logs : [];
+      this.propertyStats = state.propertyStats || {};
+      this.selectedGameMode = state.selectedGameMode || 'VS_COMPUTER';
+      this.selectedPlayerCount = state.selectedPlayerCount || state.players.length;
+      this.player1CustomShape = state.player1CustomShape || state.players[0]?.shape || 'pawn';
+      this.player1CustomColor = state.player1CustomColor || state.players[0]?.color || '#e53935';
+      this.seniorMode = !!state.seniorMode;
+
+      if (this.seniorMode) {
+        document.body.classList.toggle('senior-mode', true);
+        const sBtn = document.getElementById('btn-toggle-senior');
+        if (sBtn) sBtn.innerHTML = '👓 સામાન્ય મોડ';
+      }
+
+      // Re-render entire game board & tokens
+      this.renderBoard();
+      this.renderBuildings();
+      this.renderTokens();
+      this.updateDiceUI(this.dice[0], this.dice[1]);
+      this.updateUI();
+
+      const curPlayer = this.getCurrentPlayer();
+      if (curPlayer) {
+        this.updateActiveTileCard(curPlayer.position);
+      }
+
+      // Restore logs box
+      const logsBox = document.getElementById('game-logs-box');
+      if (logsBox && this.logs.length > 0) {
+        logsBox.innerHTML = this.logs.map(log => `
+          <div class="log-entry ${log.type || ''}">
+            <span style="font-size:11px; opacity:0.8;">[${log.time || ''}]</span> ${log.msg}
+          </div>
+        `).join('');
+      }
+
+      // Handle case where refreshed during ACTION phase (e.g. prompt was open)
+      if (this.turnPhase === 'ACTION') {
+        if (curPlayer && !curPlayer.isBot) {
+          const tile = this.tiles[curPlayer.position];
+          const owner = this.players.find(p => p.properties.includes(tile.id));
+          if (!owner && ['property', 'transport', 'utility'].includes(tile.type)) {
+            setTimeout(() => this.showBuyPropertyModal(curPlayer, tile), 400);
+          } else {
+            this.turnPhase = 'END';
+            this.updateUI();
+          }
+        } else {
+          this.turnPhase = 'END';
+          this.updateUI();
+        }
+      }
+
+      // Close launch modal
+      this.closeModal('modal-ludo-launch');
+
+      this.showScreenNotification('🔄', 'રમત પુનઃસ્થાપિત!', `પાછલી રમત સફળતાપૂર્વક લોડ થઈ ગઈ છે (${curPlayer ? curPlayer.name : 'ખેલાડી'} નો દાવ).`, '#43a047', 4000);
+      this.addLog(`🔄 પાછલી રમત પુનઃસ્થાપિત કરાઈ! (${curPlayer ? curPlayer.name : 'ખેલાડી'} નો દાવ ચાલુ છે)`, 'log-money');
+
+      this.startBotWatchdog();
+
+      if (curPlayer && curPlayer.isBot) {
+        if (this.turnPhase === 'ROLL') {
+          setTimeout(() => this.rollDice(), 1000);
+        } else if (this.turnPhase === 'END') {
+          setTimeout(() => this.endTurn(), 800);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('Game load error:', err);
+      return false;
+    }
+  }
+
+  clearSavedGameState() {
+    this.isGameActive = false;
+    try {
+      localStorage.removeItem('navo_vyapar_game_save_v1');
+    } catch (e) {
+      console.warn('LocalStorage clear error:', e);
+    }
   }
 
   // =========================================================================
@@ -1195,7 +1373,7 @@ class NavoVyaparGame {
       if (i === 0) {
         // Player 1 customizable
         const nameInput = document.getElementById('player1-name-input');
-        name = (nameInput && nameInput.value.trim()) || (mode === 'VS_COMPUTER' ? 'તમે (માણસ)' : 'પ્લેયર ૧');
+        name = (nameInput && nameInput.value && nameInput.value.trim()) || (mode === 'VS_COMPUTER' ? 'તમે (માણસ)' : 'પ્લેયર ૧');
         color = userColor;
         shape = userShape;
         isBot = false;
@@ -1262,6 +1440,9 @@ class NavoVyaparGame {
     this.addLog(`નવી રમત શરૂ થઈ! મોડ: ${modeNames[mode] || 'સ્ટાન્ડર્ડ'}`, 'log-money');
     this.closeModal('modal-ludo-launch');
 
+    this.isGameActive = true;
+    this.saveGameState();
+    this.startBotWatchdog();
     this.checkBotTurn();
   }
 
@@ -1375,34 +1556,46 @@ class NavoVyaparGame {
   }
 
   // =========================================================================
-  // 3D CUSTOM PAWN TOKENS RENDERING (Box na Center ma, Increased Size!)
+  // 3D CUSTOM PAWN TOKENS RENDERING (HIGH-PERFORMANCE OCCUPIED-ONLY RENDER)
   // =========================================================================
   renderTokens(movingPlayerId = null) {
-    this.tiles.forEach(tile => {
-      const container = document.getElementById(`tokens-${tile.id}`);
+    if (!this._occupiedTiles) this._occupiedTiles = new Set();
+
+    // Clear only previously occupied containers
+    this._occupiedTiles.forEach(tileId => {
+      const container = document.getElementById(`tokens-${tileId}`);
       if (container) container.innerHTML = '';
     });
+    this._occupiedTiles.clear();
 
-    this.tiles.forEach(tile => {
-      const playersOnTile = this.players.filter(p => !p.isBankrupt && p.position === tile.id);
-      if (playersOnTile.length === 0) return;
+    // Determine current occupied tiles
+    for (let i = 0; i < this.players.length; i++) {
+      const p = this.players[i];
+      if (!p.isBankrupt) {
+        this._occupiedTiles.add(p.position);
+      }
+    }
 
-      const container = document.getElementById(`tokens-${tile.id}`);
+    // Render tokens only into occupied tiles
+    this._occupiedTiles.forEach(tileId => {
+      const container = document.getElementById(`tokens-${tileId}`);
       if (!container) return;
 
+      const playersOnTile = this.players.filter(p => !p.isBankrupt && p.position === tileId);
       const count = playersOnTile.length;
       let scaleClass = 'token-single';
       if (count >= 4) scaleClass = 'token-many';
       else if (count >= 2) scaleClass = 'token-few';
 
-      playersOnTile.forEach(player => {
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        const player = playersOnTile[i];
         const isMoving = (movingPlayerId !== null && player.id === movingPlayerId);
-        const wrapper = document.createElement('div');
-        wrapper.className = `player-pawn-wrapper ${scaleClass} ${isMoving ? 'pawn-hopping' : ''}`;
-        wrapper.title = `${player.name} (રૂ. ${player.cash})`;
-        wrapper.innerHTML = getPlayerTokenSVG(player.shape || 'pawn', player.color, player.id);
-        container.appendChild(wrapper);
-      });
+        html += `<div class="player-pawn-wrapper ${scaleClass} ${isMoving ? 'pawn-hopping' : ''}" title="${player.name} (રૂ. ${player.cash})">
+          ${getPlayerTokenSVG(player.shape || 'pawn', player.color, player.id)}
+        </div>`;
+      }
+      container.innerHTML = html;
     });
   }
 
@@ -1416,7 +1609,10 @@ class NavoVyaparGame {
       if (!owner) return;
 
       const existingOwnerDot = document.getElementById(`owner-dot-${tile.id}`);
-      if (existingOwnerDot) existingOwnerDot.remove();
+      if (existingOwnerDot) {
+        if (typeof existingOwnerDot.remove === 'function') existingOwnerDot.remove();
+        else if (existingOwnerDot.parentNode) existingOwnerDot.parentNode.removeChild(existingOwnerDot);
+      }
       
       const tileEl = document.getElementById(`tile-${tile.id}`);
       if (tileEl) {
@@ -1510,8 +1706,18 @@ class NavoVyaparGame {
   // DICE ROLL & STEP MOVEMENT (ONLY moving player hops!)
   // =========================================================================
   rollDice() {
-    if (this.isRolling || this.turnPhase !== 'ROLL') return;
+    if (this.isRolling) {
+      if (Date.now() - (this._rollStartTime || 0) > 1500) {
+        this.isRolling = false;
+      } else {
+        return;
+      }
+    }
+    if (this.turnPhase !== 'ROLL') return;
+
     const player = this.getCurrentPlayer();
+    if (!player) return;
+
     if (player.isBankrupt) {
       this.endTurn();
       return;
@@ -1530,7 +1736,8 @@ class NavoVyaparGame {
     }
 
     this.isRolling = true;
-    sound.playDice();
+    this._rollStartTime = Date.now();
+    try { sound.playDice(); } catch(e) {}
 
     const dice1El = document.getElementById('dice-1');
     const dice2El = document.getElementById('dice-2');
@@ -1556,7 +1763,7 @@ class NavoVyaparGame {
       this.addLog(`${player.name} એ પાસા ફેંક્યા: ${d1} + ${d2} = ${this.diceSum} (${this.diceSum % 2 === 0 ? 'બેકી' : 'એકી'})`);
 
       this.movePlayerStepByStep(player, this.diceSum);
-    }, 600);
+    }, 450);
   }
 
   updateDiceUI(d1, d2) {
@@ -1587,26 +1794,27 @@ class NavoVyaparGame {
 
   movePlayerStepByStep(player, steps) {
     let stepsLeft = steps;
+    const stepDuration = 125;
     const interval = setInterval(() => {
       if (stepsLeft <= 0) {
         clearInterval(interval);
         this.renderTokens(player.id);
-        setTimeout(() => this.renderTokens(null), 250);
+        setTimeout(() => this.renderTokens(null), 200);
         this.updateActiveTileCard(player.position);
         this.handleTileLanding(player);
         return;
       }
 
       player.position = (player.position + 1) % 36;
-      sound.playStep();
-      this.renderTokens(player.id); // ONLY moving player hops!
+      try { sound.playStep(); } catch(e) {}
+      this.renderTokens(player.id);
 
       if (player.position === 0) {
         this.addBankSalary(player);
       }
 
       stepsLeft--;
-    }, 180);
+    }, stepDuration);
   }
 
   addBankSalary(player) {
@@ -1691,12 +1899,7 @@ class NavoVyaparGame {
           setTimeout(() => this.buyProperty(player, tile), 600);
         } else {
           this.addLog(`${player.name} એ વિચારપૂર્વક ${tile.name} ખરીદવાનું ટાળ્યું.`);
-          if (Math.random() < 0.6) {
-            this.addLog(`📢 ${player.name} એ મિલ્કત ન ખરીદતા ${tile.name} ની જાહેર હરાજી શરૂ કરાઈ!`);
-            setTimeout(() => this.startPropertyAuction(tile), 800);
-          } else {
-            this.finishAction();
-          }
+          this.finishAction();
         }
       } else {
         this.showBuyPropertyModal(player, tile);
@@ -1782,16 +1985,16 @@ class NavoVyaparGame {
 
     this.openModal('modal-rent-collection');
 
-    // If both are bots, auto proceed after 1.4s
-    if (owner.isBot && visitor.isBot) {
+    // If visitor is Bot, automatically pay rent and proceed after a short visual delay
+    if (visitor.isBot) {
       setTimeout(() => {
         this.closeModal('modal-rent-collection');
         sound.playCash();
         this.addLog(`💰 ભાડું વસૂલાત: ${visitor.name} એ ${owner.name} ને ${tile.name} નું ભાડું રૂ. ${rent.toLocaleString('gu-IN')} ચૂકવ્યું!`, 'log-money');
-        this.showScreenNotification('💰', 'ભાડું ચૂકવાયું!', `${visitor.name} એ ${owner.name} ને ${tile.name} નું ભાડું રૂ. ${rent.toLocaleString('gu-IN')} ચૂકવ્યું! (${visitCount}મી વાર મુલાકાત)`, owner.color, 4000);
+        this.showScreenNotification('💰', 'ભાડું ચૂકવાયું!', `${visitor.name} એ ${owner.name} ને ${tile.name} નું ભાડું રૂ. ${rent.toLocaleString('gu-IN')} ચૂકવ્યું! (${visitCount}મી વાર મુલાકાત)`, owner.color, 3500);
         this.payMoney(visitor, owner, rent);
         this.finishAction();
-      }, 1400);
+      }, 1000);
     }
   }
 
@@ -2401,6 +2604,31 @@ class NavoVyaparGame {
       setTimeout(() => {
         doProceed();
       }, 1600);
+    }
+  }
+
+  showScreenNotification(icon, title, desc, color = '#ffd54f', duration = 4000) {
+    const banner = document.getElementById('screen-event-banner');
+    const iconEl = document.getElementById('event-banner-icon');
+    const titleEl = document.getElementById('event-banner-title');
+    const descEl = document.getElementById('event-banner-desc');
+
+    if (iconEl && icon) iconEl.innerText = icon;
+    if (titleEl && title) titleEl.innerText = title;
+    if (descEl && desc) descEl.innerHTML = desc;
+
+    if (banner) {
+      if (color) {
+        banner.style.borderColor = color;
+      }
+      banner.classList.remove('highlight-event');
+      void banner.offsetWidth;
+      banner.classList.add('highlight-event');
+
+      if (this.notificationTimer) clearTimeout(this.notificationTimer);
+      this.notificationTimer = setTimeout(() => {
+        banner.classList.remove('highlight-event');
+      }, duration);
     }
   }
 
@@ -3130,16 +3358,25 @@ class NavoVyaparGame {
   }
 
   // =========================================================================
-  // TURN MANAGEMENT
+  // TURN MANAGEMENT & BOT AUTOMATION
   // =========================================================================
   finishAction() {
     this.turnPhase = 'END';
     this.updateUI();
 
     const player = this.getCurrentPlayer();
-    if (player.isBot) {
-      this.botManageTurn(player);
-      setTimeout(() => this.endTurn(), 900);
+    if (player && player.isBot) {
+      try {
+        this.botManageTurn(player);
+      } catch (e) {
+        console.warn('Bot manage turn error:', e);
+      }
+      setTimeout(() => {
+        const cur = this.getCurrentPlayer();
+        if (cur && cur.isBot && this.turnPhase === 'END') {
+          this.endTurn();
+        }
+      }, 700);
     }
   }
 
@@ -3153,29 +3390,64 @@ class NavoVyaparGame {
 
     this.currentPlayerIndex = nextIdx;
     this.turnPhase = 'ROLL';
+    this.isRolling = false; // Always clear rolling flag on turn transition
     this.updateUI();
 
     const nextPlayer = this.getCurrentPlayer();
     this.addLog(`હવે ${nextPlayer.name} નો દાવ છે.`);
-    this.showScreenNotification('🎲', 'નવો દાવ શરૂ!', `હવે ${nextPlayer.name} નો દાવ છે! પાસા ફેંકો.`, nextPlayer.color, 3000);
+    this.showScreenNotification('🎲', 'નવો દાવ શરૂ!', `હવે ${nextPlayer.name} નો દાવ છે! પાસા ફેંકો.`, nextPlayer.color, 2500);
 
+    this.isGameActive = true;
+    this.saveGameState();
+    this.startBotWatchdog();
     this.checkBotTurn();
   }
 
   checkBotTurn() {
     const player = this.getCurrentPlayer();
-    if (player.isBot && !player.isBankrupt && this.turnPhase === 'ROLL') {
-      setTimeout(() => {
-        this.rollDice();
-      }, 1100);
+    if (!player || !player.isBot || player.isBankrupt) return;
+
+    if (this._botTurnTimer) clearTimeout(this._botTurnTimer);
+
+    if (this.turnPhase === 'ROLL') {
+      this._botTurnTimer = setTimeout(() => {
+        const cur = this.getCurrentPlayer();
+        if (cur && cur.isBot && this.turnPhase === 'ROLL') {
+          this.rollDice();
+        }
+      }, 750);
+    } else if (this.turnPhase === 'END') {
+      this._botTurnTimer = setTimeout(() => {
+        const cur = this.getCurrentPlayer();
+        if (cur && cur.isBot && this.turnPhase === 'END') {
+          this.endTurn();
+        }
+      }, 600);
     }
+  }
+
+  startBotWatchdog() {
+    if (this._watchdogInterval) clearInterval(this._watchdogInterval);
+    this._watchdogInterval = setInterval(() => {
+      if (!this.isGameActive) return;
+      const player = this.getCurrentPlayer();
+      if (!player || !player.isBot || player.isBankrupt) return;
+
+      // Watchdog failsafe: If bot is in ROLL phase and not moving for >2.5s, force roll
+      if (this.turnPhase === 'ROLL' && !this.isRolling) {
+        this.rollDice();
+      } else if (this.turnPhase === 'END') {
+        this.endTurn();
+      }
+    }, 2200);
   }
 
   checkWinner() {
     const active = this.players.filter(p => !p.isBankrupt);
-    if (active.length === 1) {
+    if (active.length === 1 && this.players.length > 1) {
       const winner = active[0];
       sound.playBuy();
+      this.clearSavedGameState();
       alert(`અભિનંદન! ${winner.name} નવો વ્યાપાર રમતમાં મહાન વિજેતા બન્યા છે! 🏆👑`);
     }
   }
@@ -3356,6 +3628,7 @@ class NavoVyaparGame {
     }
 
     this.renderBuildings();
+    this.saveGameState();
   }
 
   addLog(msg, type = '') {
@@ -3527,9 +3800,18 @@ class NavoVyaparGame {
 
     const newGameBtn = document.getElementById('btn-new-game');
     if (newGameBtn) newGameBtn.onclick = () => {
+      if (this.isGameActive && this.players.length > 0) {
+        const ok = confirm('શું તમે ચાલુ રમત બંધ કરીને તદ્દન નવી રમત શરૂ કરવા માંગો છો? (ચાલુ રમતનો ડેટા સાફ થશે)');
+        if (!ok) return;
+      }
+      this.clearSavedGameState();
       this.openModal('modal-ludo-launch');
       this.updateLudoLaunchUI();
     };
+
+    window.addEventListener('beforeunload', () => {
+      this.saveGameState();
+    });
 
     document.querySelectorAll('.modal-close, .btn-modal-cancel').forEach(btn => {
       btn.onclick = (e) => {

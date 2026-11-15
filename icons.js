@@ -1,6 +1,11 @@
 // icons.js - તમામ શહેરો, ચિહ્નો અને ૮ પ્રકારના કસ્ટમ ૩D ટોકન્સ (Custom 3D Pawn Shapes)
 
+const _tokenCache = {};
+
 export function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
+  const cacheKey = `${shape}_${color}_${id}`;
+  if (_tokenCache[cacheKey]) return _tokenCache[cacheKey];
+
   const gradId = `token-grad-${id}`;
   const darkGradId = `token-dark-${id}`;
 
@@ -87,7 +92,7 @@ export function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
 
   const selectedPath = shapes[shape] || shapes.pawn;
 
-  return `
+  const svgString = `
     <svg viewBox="0 0 30 38" class="custom-token-svg">
       <defs>
         <radialGradient id="${gradId}" cx="35%" cy="30%" r="65%">
@@ -103,6 +108,8 @@ export function getPlayerTokenSVG(shape = 'pawn', color = '#e53935', id = 0) {
       ${selectedPath}
     </svg>
   `;
+  _tokenCache[cacheKey] = svgString;
+  return svgString;
 }
 
 // Backward compatibility alias
