@@ -472,7 +472,7 @@ const VYAVAHAR_RULES = {
 
 // કુલ ૬ ખેલાડીઓ (૧ માણસ + ૫ હોંશિયાર કોમ્પ્યુટર બોટ્સ)
 const DEFAULT_PLAYERS = [
-  { id: 0, name: "તમે (લાલ)", color: "#e53935", tokenClass: "token-red", isBot: false },
+  { id: 0, name: "તમે", color: "#e53935", tokenClass: "token-red", isBot: false },
   { id: 1, name: "બોટ ૧: રમેશ (લીલો)", color: "#43a047", tokenClass: "token-green", isBot: true },
   { id: 2, name: "બોટ ૨: સુરેશ (પીળો)", color: "#fdd835", tokenClass: "token-yellow", isBot: true },
   { id: 3, name: "બોટ ૩: મહેશ (વાદળી)", color: "#1e88e5", tokenClass: "token-blue", isBot: true },
@@ -1185,6 +1185,9 @@ class NavoVyaparGame {
     this.dice = [1, 1];
     this.diceSum = 2;
     this.isRolling = false;
+    this.isMoving = false;
+    this.isTurnProcessing = false;
+    this._turnCounter = 0;
     this.turnPhase = 'ROLL';
     this.logs = [];
     this.selectedLoanAmount = 2000;
@@ -1258,6 +1261,9 @@ class NavoVyaparGame {
 
       this.isGameActive = true;
       this.players = state.players;
+      this.players.forEach(p => {
+        if (p.isUnlocked === undefined) p.isUnlocked = true;
+      });
       this.currentPlayerIndex = state.currentPlayerIndex || 0;
       this.turnPhase = state.turnPhase || 'ROLL';
       this.bank = state.bank || { cash: 350000, totalLoans: 0 };
@@ -1373,7 +1379,7 @@ class NavoVyaparGame {
       if (i === 0) {
         // Player 1 customizable
         const nameInput = document.getElementById('player1-name-input');
-        name = (nameInput && nameInput.value && nameInput.value.trim()) || (mode === 'VS_COMPUTER' ? 'તમે (માણસ)' : 'પ્લેયર ૧');
+        name = (nameInput && nameInput.value && nameInput.value.trim()) || (mode === 'VS_COMPUTER' ? 'તમે' : 'પ્લેયર ૧');
         color = userColor;
         shape = userShape;
         isBot = false;
@@ -1413,7 +1419,8 @@ class NavoVyaparGame {
         inJail: false,
         jailTurns: 0,
         missNextTurn: false,
-        isBankrupt: false
+        isBankrupt: false,
+        isUnlocked: false
       });
     }
 
@@ -1525,7 +1532,7 @@ class NavoVyaparGame {
         if (window._isBoardPanning) return; // Prevent accidental clicks during pan
         sound.playClick();
         this.selectedTileId = tile.id;
-        this.updateActiveTileCard(tile.id);
+        this.updateActiveTileCard(tile.id, true);
         this.showTileDetails(tile);
       });
 
@@ -1668,14 +1675,11 @@ class NavoVyaparGame {
   }
 
   // =========================================================================
-  // ACTIVE TILE FOCUS CARD
+  // ACTIVE TILE FOCUS CARD & FLOATING TOAST
   // =========================================================================
-  updateActiveTileCard(tileId) {
+  updateActiveTileCard(tileId, showToast = false) {
     const tile = this.tiles[tileId];
     if (!tile) return;
-
-    const cardContainer = document.getElementById('active-tile-focus-card');
-    if (!cardContainer) return;
 
     const owner = this.players.find(p => p.properties.includes(tile.id));
     const groupData = COLOR_GROUPS[tile.group] || { color: '#0288d1' };
@@ -1685,7 +1689,7 @@ class NavoVyaparGame {
 
     if (tile.type === 'property' || tile.type === 'transport' || tile.type === 'utility') {
       if (!owner) {
-        statusHtml = `<span class="badge-unowned">🏛️ ખરીદી શકાય છે: રૂ. ${tile.price.toLocaleString('gu-IN')}</span>`;
+        statusHtml = `<span class="badge-unowned">🏛️ ખરીદી શકાય: રૂ. ${tile.price.toLocaleString('gu-IN')}</span>`;
       } else {
         const isM = owner.mortgaged[tile.id];
         statusHtml = `<span class="badge-owned" style="background:${owner.color}; color:#fff;">માલિક: ${owner.name} ${isM ? '(ગીરો)' : ''}</span>`;
@@ -1705,25 +1709,57 @@ class NavoVyaparGame {
       statusHtml = `<span class="badge-special">${tile.desc}</span>`;
     }
 
-    cardContainer.innerHTML = `
-      <div class="active-card-header" style="border-left: 8px solid ${groupData.color};">
-        <div class="active-card-icon">${getTileIcon(tile.icon)}</div>
-        <div class="active-card-meta">
-          <div class="active-card-title">${tile.name} <span class="active-card-sub">(${tile.subName})</span></div>
-          <div class="active-card-status">${statusHtml}</div>
+    const cardContainer = document.getElementById('active-tile-focus-card');
+    if (cardContainer) {
+      cardContainer.innerHTML = `
+        <div class="active-card-header" style="border-left: 8px solid ${groupData.color};">
+          <div class="active-card-icon">${getTileIcon(tile.icon)}</div>
+          <div class="active-card-meta">
+            <div class="active-card-title">${tile.name} <span class="active-card-sub">(${tile.subName})</span></div>
+            <div class="active-card-status">${statusHtml}</div>
+          </div>
         </div>
-      </div>
-      ${rentInfoHtml}
-    `;
+        ${rentInfoHtml}
+      `;
+    }
+
+    // Live Floating Toast (#tile-tap-toast) - Only when explicitly tapped by user!
+    if (showToast) {
+      const toast = document.getElementById('tile-tap-toast');
+      const toastContent = document.getElementById('tile-tap-content');
+      if (toast && toastContent) {
+        let toastText = `<b>${tile.name}</b> (${tile.subName || ''}) • `;
+        if (tile.type === 'property' || tile.type === 'transport' || tile.type === 'utility') {
+          if (!owner) {
+            toastText += `<span style="color:#69f0ae; font-weight:700;">ખરીદી: રૂ. ${tile.price.toLocaleString('gu-IN')}</span>`;
+          } else {
+            const rentVal = this.calculateRent(tile, owner);
+            toastText += `<span style="color:${owner.color}; font-weight:bold;">${owner.name}</span> • ભાડું: રૂ. ${rentVal.toLocaleString('gu-IN')}`;
+          }
+        } else {
+          toastText += `<span style="color:#ffd54f;">${tile.desc}</span>`;
+        }
+        toastContent.innerHTML = toastText;
+        toast.style.display = 'flex';
+        if (this._toastTimer) clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+          if (toast) toast.style.display = 'none';
+        }, 4000);
+      }
+    }
   }
 
   // =========================================================================
   // DICE ROLL & STEP MOVEMENT (ONLY moving player hops!)
   // =========================================================================
   rollDice() {
-    if (this.isRolling) {
-      if (Date.now() - (this._rollStartTime || 0) > 1500) {
+    if (this.isAnyModalOpen()) return;
+
+    if (this.isRolling || this.isMoving || this.isTurnProcessing) {
+      if (Date.now() - (this._rollStartTime || 0) > 4000) {
         this.isRolling = false;
+        this.isMoving = false;
+        this.isTurnProcessing = false;
       } else {
         return;
       }
@@ -1751,6 +1787,7 @@ class NavoVyaparGame {
     }
 
     this.isRolling = true;
+    this.isTurnProcessing = true;
     this._rollStartTime = Date.now();
     try { sound.playDice(); } catch(e) {}
 
@@ -1776,6 +1813,24 @@ class NavoVyaparGame {
 
       this.isRolling = false;
       this.addLog(`${player.name} એ પાસા ફેંક્યા: ${d1} + ${d2} = ${this.diceSum} (${this.diceSum % 2 === 0 ? 'બેકી' : 'એકી'})`);
+
+      // Ludo-Style Opening Rule: Must roll 6 (either die is 6 or sum is 6) to unlock goti!
+      if (!player.isUnlocked) {
+        if (d1 === 6 || d2 === 6 || this.diceSum === 6) {
+          player.isUnlocked = true;
+          try { sound.playCash(); } catch(e) {}
+          this.addLog(`🎉 ૬ આવ્યો! ${player.name} ની ગોટી બોર્ડ પર રમવા માટે બહાર નીકળી!`, 'log-money');
+          this.showScreenNotification('🎉', '૬ આવ્યો! ગોટી બહાર નીકળી', `${player.name} ની ગોટી અનલૉક થઈ અને ${this.diceSum} ડગલાં આગળ વધશે!`, '#69f0ae', 3500);
+          this.movePlayerStepByStep(player, this.diceSum);
+        } else {
+          this.addLog(`🔒 ${player.name} ને ૬ ન આવ્યો (પાસા: ${d1} + ${d2} = ${this.diceSum}). ગોટી શરૂ કરવા ૬ જરૂરી છે.`);
+          this.showScreenNotification('🔒', '૬ ની જરૂર છે!', `ગોટી બહાર લાવવા માટે પાસામાં ૬ આવવો જરૂરી છે.`, '#ffd54f', 2200);
+          setTimeout(() => {
+            this.finishAction();
+          }, 1100);
+        }
+        return;
+      }
 
       this.movePlayerStepByStep(player, this.diceSum);
     }, 450);
@@ -1808,15 +1863,19 @@ class NavoVyaparGame {
   }
 
   movePlayerStepByStep(player, steps) {
+    this.isMoving = true;
     let stepsLeft = steps;
-    const stepDuration = 125;
+    const stepDuration = 280; // Slowed down from 125ms for smooth, audible, satisfying hops
     const interval = setInterval(() => {
       if (stepsLeft <= 0) {
         clearInterval(interval);
+        this.isMoving = false;
         this.renderTokens(player.id);
-        setTimeout(() => this.renderTokens(null), 200);
-        this.updateActiveTileCard(player.position);
-        this.handleTileLanding(player);
+        setTimeout(() => this.renderTokens(null), 250);
+        this.updateActiveTileCard(player.position, false);
+        setTimeout(() => {
+          this.handleTileLanding(player);
+        }, 650); // Clear, satisfying pause upon arrival so token is visibly settled before modal opens!
         return;
       }
 
@@ -1913,8 +1972,9 @@ class NavoVyaparGame {
         if (shouldBuy) {
           setTimeout(() => this.buyProperty(player, tile), 600);
         } else {
-          this.addLog(`${player.name} એ વિચારપૂર્વક ${tile.name} ખરીદવાનું ટાળ્યું.`);
-          this.finishAction();
+          this.addLog(`📢 ${player.name} એ ${tile.name} સીધી ખરીદી નહીં, તેથી તેને બધા ખેલાડીઓ માટે 'જાહેર હરાજી' (Public Auction) માં મૂકી!`, 'log-money');
+          this.showScreenNotification('🔨', 'બોટ દ્વારા જાહેર હરાજી!', `${player.name} એ ${tile.name} ની હરાજી શરૂ કરી! બોલી લગાવો.`, '#ff9800', 3500);
+          setTimeout(() => this.startPropertyAuction(tile), 1200);
         }
       } else {
         this.showBuyPropertyModal(player, tile);
@@ -2117,90 +2177,212 @@ class NavoVyaparGame {
   }
 
   showBuyPropertyModal(player, tile) {
+    this.showPropertyDeedCard(tile, false, player);
+  }
+
+  // =========================================================================
+  // AUTHENTIC PHYSICAL TITLE DEED CARD (અસલ મિલકત પત્રિકા કાર્ડ)
+  // =========================================================================
+  showPropertyDeedCard(tileOrId, isInspect = true, landingPlayer = null) {
+    const tile = typeof tileOrId === 'object' ? tileOrId : this.tiles[tileOrId];
+    if (!tile) return;
+
     const modal = document.getElementById('modal-property');
     const header = document.getElementById('prop-modal-header');
     const title = document.getElementById('prop-modal-title');
     const subtitle = document.getElementById('prop-modal-sub');
     const priceVal = document.getElementById('prop-modal-price');
     const rentTable = document.getElementById('prop-modal-rent-table');
+    const mortgageBox = document.getElementById('prop-modal-mortgage-box');
+    const statusBox = document.getElementById('prop-modal-status-box');
     const buyBtn = document.getElementById('btn-buy-prop');
     const passBtn = document.getElementById('btn-pass-prop');
-
-    const groupData = COLOR_GROUPS[tile.group] || { color: '#1976d2' };
-    if (header) header.style.backgroundColor = groupData.color;
-    if (title) title.innerText = tile.name;
-    if (subtitle) subtitle.innerText = tile.subName;
-    if (priceVal) priceVal.innerText = `રૂ. ${tile.price.toLocaleString('gu-IN')}`;
-
-    if (rentTable) {
-      if (tile.rent) {
-        rentTable.innerHTML = `
-          <tr><td>સામાન્ય ભાડું:</td><td><b>રૂ. ${tile.rent[0]}</b></td></tr>
-          <tr><td>આખો કલર સેટ:</td><td><b>રૂ. ${tile.rent[0] * 2}</b></td></tr>
-          <tr><td>૧ ઘર સાથે ભાડું:</td><td><b>રૂ. ${tile.rent[1]}</b></td></tr>
-          <tr><td>૨ ઘર સાથે ભાડું:</td><td><b>રૂ. ${tile.rent[2]}</b></td></tr>
-          <tr><td>૩ ઘર સાથે ભાડું:</td><td><b>રૂ. ${tile.rent[3]}</b></td></tr>
-          <tr><td>૧ હોટેલ સાથે ભાડું:</td><td><b style="color:#b71c1c;">રૂ. ${tile.rent[4]}</b></td></tr>
-          <tr><td>ઘર બાંધકામ ખર્ચ:</td><td>રૂ. ${tile.houseCost || 1500}</td></tr>
-        `;
-      } else {
-        rentTable.innerHTML = `<tr><td colspan="2">${tile.desc}</td></tr>`;
-      }
-    }
-
+    const auctionBtn = document.getElementById('btn-auction-prop');
+    const inspectCloseBtn = document.getElementById('btn-prop-inspect-close');
     const shortageAlert = document.getElementById('prop-insufficient-funds-alert');
     const shortageDesc = document.getElementById('prop-shortage-desc');
     const loanQuickBtn = document.getElementById('btn-prop-quick-loan');
     const questionEl = document.getElementById('prop-buy-question');
 
-    const isShort = player.cash < tile.price;
+    const groupData = COLOR_GROUPS[tile.group] || { color: '#1976d2', name: tile.group };
+    if (header) {
+      header.style.backgroundColor = groupData.color;
+      header.innerHTML = `
+        <div class="deed-type-badge">મિલકત પત્રિકા • TITLE DEED</div>
+        <h2>${tile.name}</h2>
+        <div class="deed-subname">${tile.subName || ''}</div>
+      `;
+    }
+    if (title) title.innerText = tile.name;
+    if (subtitle) subtitle.innerText = tile.subName || '';
+    if (priceVal) priceVal.innerText = `રૂ. ${tile.price.toLocaleString('gu-IN')}`;
 
-    if (isShort) {
-      if (shortageAlert) shortageAlert.style.display = 'block';
-      if (shortageDesc) {
-        const diff = tile.price - player.cash;
-        shortageDesc.innerHTML = `આ મિલ્કતની કિંમત <b>રૂ. ${tile.price.toLocaleString('gu-IN')}</b> છે, જ્યારે તમારી પાસે માત્ર <b>રૂ. ${player.cash.toLocaleString('gu-IN')}</b> છે.<br><b style="color:#ffd54f;">ખૂટતી રકમ: રૂ. ${diff.toLocaleString('gu-IN')}</b>`;
+    // Render Authentic Navo Vyapar Rent Table
+    if (rentTable) {
+      if (tile.rent && tile.rent.length >= 5) {
+        rentTable.innerHTML = `
+          <tr><td>ખાલી પ્લોટનું ભાડું (Site Rent):</td><td><b>રૂ. ${tile.rent[0].toLocaleString('gu-IN')}</b></td></tr>
+          <tr><td>આખો કલર ગ્રૂપ સેટ હોય ત્યારે:</td><td><b>રૂ. ${(tile.rent[0] * 2).toLocaleString('gu-IN')}</b></td></tr>
+          <tr><td>૧ ઘર સાથે ભાડું (With 1 House):</td><td><b>રૂ. ${tile.rent[1].toLocaleString('gu-IN')}</b></td></tr>
+          <tr><td>૨ ઘર સાથે ભાડું (With 2 Houses):</td><td><b>રૂ. ${tile.rent[2].toLocaleString('gu-IN')}</b></td></tr>
+          <tr><td>૩ ઘર સાથે ભાડું (With 3 Houses):</td><td><b>રૂ. ${tile.rent[3].toLocaleString('gu-IN')}</b></td></tr>
+          <tr><td>🏨 ૧ ભવ્ય હોટેલ સાથે ભાડું:</td><td><b style="color:#b71c1c;">રૂ. ${tile.rent[4].toLocaleString('gu-IN')}</b></td></tr>
+        `;
+      } else if (tile.type === 'transport' || tile.type === 'vehicle') {
+        rentTable.innerHTML = `
+          <tr><td>૧ વાહન માલિકી:</td><td><b>રૂ. ૨૫૦</b></td></tr>
+          <tr><td>૨ વાહન માલિકી:</td><td><b>રૂ. ૫૦૦</b></td></tr>
+          <tr><td>૩ વાહન માલિકી:</td><td><b>રૂ. ૧,૦૦૦</b></td></tr>
+          <tr><td>૪ વાહન માલિકી:</td><td><b>રૂ. ૨,૦૦૦</b></td></tr>
+        `;
+      } else if (tile.type === 'utility') {
+        rentTable.innerHTML = `
+          <tr><td>૧ કંપની માલિકી:</td><td><b>પાસાના સરવાળાના ૫ ગણા</b></td></tr>
+          <tr><td>૨ કંપની માલિકી:</td><td><b>પાસાના સરવાળાના ૧૦ ગણા</b></td></tr>
+        `;
+      } else {
+        rentTable.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:8px;">${tile.desc || 'વિશેષ મિલ્કત'}</td></tr>`;
       }
-      if (questionEl) questionEl.innerText = 'તમારી પાસે પૂરતા પૈસા નથી! તમે બેંક કે અન્ય ખેલાડી પાસેથી લોન લઈ શકો છો:';
-      if (buyBtn) {
-        buyBtn.disabled = true;
-        buyBtn.innerHTML = '❌ રોકડ ખૂટે છે';
-        buyBtn.style.opacity = '0.5';
+    }
+
+    // Mortgage & Construction Cost Box
+    const mortgageVal = Math.floor(tile.price * 0.5);
+    const hCost = tile.houseCost || 1500;
+    if (mortgageBox) {
+      mortgageBox.innerHTML = `
+        <div class="deed-mortgage-row">
+          <span>🏦 મોર્ટગેજ (ગીરો) કિંમત:</span>
+          <b>રૂ. ${mortgageVal.toLocaleString('gu-IN')} (૫૦%)</b>
+        </div>
+        <div class="deed-mortgage-row">
+          <span>🏠 દરેક ઘર બાંધકામ ખર્ચ:</span>
+          <b>રૂ. ${hCost.toLocaleString('gu-IN')}</b>
+        </div>
+        <div class="deed-mortgage-row">
+          <span>🏨 હોટેલ ખર્ચ:</span>
+          <b>રૂ. ${hCost.toLocaleString('gu-IN')} વત્તા ૪ ઘરો</b>
+        </div>
+      `;
+    }
+
+    // Real-time Live Game Status
+    const owner = this.players.find(p => p.properties.includes(tile.id));
+    const stats = this.propertyStats[tile.id] || { totalVisits: 0, totalRevenue: 0 };
+    if (statusBox) {
+      if (owner) {
+        const houses = owner.houses[tile.id] || 0;
+        const isMortgaged = !!(owner.mortgaged && owner.mortgaged[tile.id]);
+        let houseText = '🌱 ખાલી પ્લોટ';
+        if (houses >= 5) houseText = '🏨 ૧ ભવ્ય હોટેલ';
+        else if (houses > 0) houseText = `🏠 ${houses} ઘરો નિર્મિત`;
+
+        let activeRent = tile.rent ? tile.rent[0] : 250;
+        if (tile.rent) {
+          if (houses === 5) activeRent = tile.rent[4];
+          else if (houses > 0) activeRent = tile.rent[houses];
+          else if (this.isColorGroupOwned(owner, tile.group)) activeRent = tile.rent[0] * 2;
+        }
+
+        statusBox.innerHTML = `
+          <div style="background:rgba(13, 24, 48, 0.95); border:1.5px solid #ffd54f; border-radius:10px; padding:10px 12px; color:#fff; font-size:12px; display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span>👑 વર્તમાન માલિક:</span>
+              <span style="font-weight:bold; color:${owner.color};">${owner.name} ${isMortgaged ? '<b style="color:#ef5350;">(ગીરો)</b>' : ''}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span>🏗️ બાંધકામ સ્થિતિ:</span>
+              <span style="font-weight:bold; color:#ffd54f;">${houseText}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span>💰 વર્તમાન સક્રિય ભાડું:</span>
+              <span style="font-weight:bold; color:#69f0ae;">રૂ. ${activeRent.toLocaleString('gu-IN')}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#b0bec5; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px; margin-top:2px;">
+              <span>👥 મુલાકાતો: ${stats.totalVisits || 0} વાર</span>
+              <span>કુલ આવક: રૂ. ${(stats.totalRevenue || 0).toLocaleString('gu-IN')}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        statusBox.innerHTML = `
+          <div style="background:rgba(13, 24, 48, 0.95); border:1.5px solid #81c784; border-radius:10px; padding:8px 12px; color:#fff; font-size:12px; text-align:center;">
+            <div style="color:#81c784; font-weight:800; font-size:13px; margin-bottom:2px;">🏷️ સરકારી તિજોરી / ખરીદવા માટે ઉપલબ્ધ</div>
+            <div style="color:#cfd8dc; font-size:11px;">કોઈપણ ખેલાડી આ ખાના પર આવીને અથવા હરાજીમાં આ મિલ્કત ખરીદી શકે છે.</div>
+          </div>
+        `;
       }
-      if (loanQuickBtn) {
-        loanQuickBtn.onclick = () => {
+    }
+
+    if (isInspect) {
+      // Inspection mode - only show close button
+      if (inspectCloseBtn) inspectCloseBtn.style.display = 'inline-block';
+      if (buyBtn) buyBtn.style.display = 'none';
+      if (passBtn) passBtn.style.display = 'none';
+      if (auctionBtn) auctionBtn.style.display = 'none';
+      if (shortageAlert) shortageAlert.style.display = 'none';
+      if (questionEl) questionEl.style.display = 'none';
+
+      if (inspectCloseBtn) {
+        inspectCloseBtn.onclick = () => {
           this.closeModal('modal-property');
-          this.showBankLoanModal();
         };
       }
     } else {
-      if (shortageAlert) shortageAlert.style.display = 'none';
-      if (questionEl) questionEl.innerText = 'શું તમે આ મિલ્કત ખરીદવા માંગો છો?';
-      if (buyBtn) {
-        buyBtn.disabled = false;
-        buyBtn.innerHTML = `ખરીદો (Buy: રૂ. ${tile.price.toLocaleString('gu-IN')})`;
-        buyBtn.style.opacity = '1';
-        buyBtn.onclick = () => {
+      // Landing mode during turn - player deciding to buy
+      const curP = landingPlayer || this.players[this.currentPlayerIndex];
+      if (inspectCloseBtn) inspectCloseBtn.style.display = 'none';
+      if (buyBtn) buyBtn.style.display = 'inline-block';
+      if (passBtn) passBtn.style.display = 'inline-block';
+      if (auctionBtn) auctionBtn.style.display = 'inline-block';
+      if (questionEl) questionEl.style.display = 'block';
+
+      const isShort = curP.cash < tile.price;
+      if (isShort) {
+        if (shortageAlert) shortageAlert.style.display = 'block';
+        if (shortageDesc) {
+          const diff = tile.price - curP.cash;
+          shortageDesc.innerHTML = `આ મિલ્કતની કિંમત <b>રૂ. ${tile.price.toLocaleString('gu-IN')}</b> છે, જ્યારે તમારી પાસે માત્ર <b>રૂ. ${curP.cash.toLocaleString('gu-IN')}</b> છે.<br><b style="color:#ffd54f;">ખૂટતી રકમ: રૂ. ${diff.toLocaleString('gu-IN')}</b>`;
+        }
+        if (questionEl) questionEl.innerText = 'તમારી પાસે પૂરતા પૈસા નથી! તમે બેંક પાસેથી લોન લઈ શકો છો અથવા હરાજી કરાવી શકો છો:';
+        if (buyBtn) {
+          buyBtn.disabled = true;
+          buyBtn.innerHTML = '❌ રોકડ ખૂટે છે';
+          buyBtn.style.opacity = '0.5';
+        }
+        if (loanQuickBtn) {
+          loanQuickBtn.onclick = () => {
+            this.closeModal('modal-property');
+            this.showBankLoanModal();
+          };
+        }
+      } else {
+        if (shortageAlert) shortageAlert.style.display = 'none';
+        if (questionEl) questionEl.innerText = 'શું તમે આ મિલ્કત ખરીદવા માંગો છો?';
+        if (buyBtn) {
+          buyBtn.disabled = false;
+          buyBtn.innerHTML = `🟢 ખરીદો (Buy: રૂ. ${tile.price.toLocaleString('gu-IN')})`;
+          buyBtn.style.opacity = '1';
+          buyBtn.onclick = () => {
+            this.closeModal('modal-property');
+            this.buyProperty(curP, tile);
+          };
+        }
+      }
+
+      if (passBtn) {
+        passBtn.onclick = () => {
           this.closeModal('modal-property');
-          this.buyProperty(player, tile);
+          this.addLog(`${curP.name} એ ${tile.name} ખરીદવાનું ટાળ્યું.`);
+          this.finishAction();
         };
       }
-    }
 
-    if (passBtn) {
-      passBtn.onclick = () => {
-        this.closeModal('modal-property');
-        this.addLog(`${player.name} એ ${tile.name} ખરીદવાનું ટાળ્યું.`);
-        this.finishAction();
-      };
-    }
-
-    const auctionBtn = document.getElementById('btn-auction-prop');
-    if (auctionBtn) {
-      auctionBtn.onclick = () => {
-        this.closeModal('modal-property');
-        this.startPropertyAuction(tile);
-      };
+      if (auctionBtn) {
+        auctionBtn.onclick = () => {
+          this.closeModal('modal-property');
+          this.startPropertyAuction(tile);
+        };
+      }
     }
 
     this.openModal('modal-property');
@@ -2500,9 +2682,17 @@ class NavoVyaparGame {
     const rulePool = isEven ? BHAGYA_RULES.EVEN : BHAGYA_RULES.ODD;
     let rule = rulePool[this.diceSum] || Object.values(rulePool)[0];
 
-    this.showEventModal("ભાગ્ય (Bhagya)", rule.text, () => {
-      this.executeRule(player, rule);
-    });
+    if (player.isBot) {
+      this.showScreenNotification('❓', 'ભાગ્ય (Bhagya)', `${player.name} માટે: ${rule.text}`, '#ffd54f', 3200);
+      this.addLog(`❓ ભાગ્ય: ${player.name} પર "${rule.text}" લાગુ થયું.`);
+      setTimeout(() => {
+        this.executeRule(player, rule);
+      }, 1400);
+    } else {
+      this.showEventModal("ભાગ્ય (Bhagya)", rule.text, () => {
+        this.executeRule(player, rule);
+      });
+    }
   }
 
   handleVyavaharLanding(player) {
@@ -2510,9 +2700,17 @@ class NavoVyaparGame {
     const rulePool = isEven ? VYAVAHAR_RULES.EVEN : VYAVAHAR_RULES.ODD;
     let rule = rulePool[this.diceSum] || Object.values(rulePool)[0];
 
-    this.showEventModal("વ્યવહાર (Vyavahar)", rule.text, () => {
-      this.executeRule(player, rule);
-    });
+    if (player.isBot) {
+      this.showScreenNotification('🤝', 'વ્યવહાર (Vyavahar)', `${player.name} માટે: ${rule.text}`, '#ffd54f', 3200);
+      this.addLog(`🤝 વ્યવહાર: ${player.name} પર "${rule.text}" લાગુ થયું.`);
+      setTimeout(() => {
+        this.executeRule(player, rule);
+      }, 1400);
+    } else {
+      this.showEventModal("વ્યવહાર (Vyavahar)", rule.text, () => {
+        this.executeRule(player, rule);
+      });
+    }
   }
 
   executeRule(player, rule) {
@@ -2549,11 +2747,28 @@ class NavoVyaparGame {
       case 'go_mumbai_reward':
         player.position = 1;
         player.cash += 4500;
+        this.bank.cash = Math.max(0, this.bank.cash - 4500);
         this.renderTokens(player.id);
-        setTimeout(() => this.renderTokens(null), 300);
+        this.updateUI();
         sound.playCash();
-        this.addLog(`${player.name} પાછા મુંબઈ ગયા અને સ્ટાર્ટીંગ બોનસ + ઇનામ રૂ. ૪,૫૦૦ મેળવ્યા!`, 'log-money');
-        this.finishAction();
+        this.addLog(`${player.name} પાછા મુંબઈ પહોંચ્યા અને બોનસ + ઇનામ રૂ. ૪,૫૦૦ મેળવ્યા! 🎉`, 'log-money');
+        this.showScreenNotification('🏙️', 'પાછા મુંબઈ પહોંચ્યા!', `${player.name} મુંબઈ પહોંચ્યા અને રૂ. ૪,૫૦૦ મેળવ્યા!`, '#69f0ae', 3500);
+        setTimeout(() => {
+          this.renderTokens(null);
+          const mumbaiTile = this.tiles[1];
+          const owner = this.players.find(p => p.properties.includes(1));
+          if (!owner) {
+            if (!player.isBot) {
+              this.showBuyPropertyModal(player, mumbaiTile);
+            } else {
+              this.handlePropertyLanding(player, mumbaiTile);
+            }
+          } else if (owner.id !== player.id) {
+            this.handlePropertyLanding(player, mumbaiTile);
+          } else {
+            this.finishAction();
+          }
+        }, 1200);
         break;
 
       case 'collect_from_players':
@@ -2630,6 +2845,7 @@ class NavoVyaparGame {
     if (descEl && desc) descEl.innerHTML = desc;
 
     if (banner) {
+      banner.style.display = 'flex';
       if (color) {
         banner.style.borderColor = color;
       }
@@ -2640,6 +2856,7 @@ class NavoVyaparGame {
       if (this.notificationTimer) clearTimeout(this.notificationTimer);
       this.notificationTimer = setTimeout(() => {
         banner.classList.remove('highlight-event');
+        banner.style.display = 'none';
       }, duration);
     }
   }
@@ -2717,9 +2934,17 @@ class NavoVyaparGame {
   // =========================================================================
   // BANK LOAN SYSTEM
   // =========================================================================
-  showBankLoanModal() {
-    const player = this.getCurrentPlayer();
+  showBankLoanModal(targetPlayer = null) {
+    try { sound.playClick(); } catch(e) {}
+    const humanPlayer = this.players.find(p => !p.isBot) || this.players[0] || {
+      id: 0, name: 'તમે', cash: 25000, loan: 0, bankLoans: [], properties: [], isBot: false
+    };
+    const player = targetPlayer || humanPlayer;
     const modal = document.getElementById('modal-loan');
+
+    // Update Central Bank Vault Display inside Modal
+    const modalVaultCash = document.getElementById('modal-bank-vault-cash');
+    if (modalVaultCash) modalVaultCash.innerText = `₹ ${(this.bank.cash || 350000).toLocaleString('gu-IN')}`;
     const cashEl = document.getElementById('loan-player-cash');
     const currLoanEl = document.getElementById('loan-player-active');
     const takeBtn = document.getElementById('btn-take-loan');
@@ -3106,7 +3331,8 @@ class NavoVyaparGame {
       tabsContainer.appendChild(pill);
     });
 
-    const targetPlayer = this.players.find(p => p.id === selectedPlayerId) || this.players[0];
+    const targetId = typeof selectedPlayerId === 'object' ? selectedPlayerId.id : selectedPlayerId;
+    const targetPlayer = this.players.find(p => p.id === targetId) || this.players[0];
 
     let propVal = targetPlayer.properties.reduce((sum, id) => sum + this.tiles[id].price, 0);
     let netWorth = targetPlayer.cash + propVal - targetPlayer.loan;
@@ -3193,7 +3419,7 @@ class NavoVyaparGame {
         const stats = this.propertyStats[prop.id] || { totalVisits: 0, totalRevenue: 0 };
 
         html += `
-          <div style="display:flex; justify-content:space-between; align-items:center; background:${isOwned ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.2)'}; padding:5px 8px; border-radius:5px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; background:${isOwned ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.2)'}; padding:6px 10px; border-radius:6px; cursor:pointer; transition:background 0.2s;" onclick="game.showPropertyDeedCard(${prop.id}, true)">
             <div>
               <span style="${isOwned ? 'color:#81c784; font-weight:bold;' : 'color:#90a4ae;'}">${isOwned ? '✅' : '⚪'} ${prop.name}</span>
               <span style="font-size:10.5px; color:#cfd8dc; margin-left:6px;">(કિંમત: રૂ. ${prop.price.toLocaleString('gu-IN')})</span>
@@ -3374,6 +3600,7 @@ class NavoVyaparGame {
   // =========================================================================
   finishAction() {
     this.turnPhase = 'END';
+    this.isMoving = false;
     this.updateUI();
 
     const player = this.getCurrentPlayer();
@@ -3383,17 +3610,18 @@ class NavoVyaparGame {
       } catch (e) {
         console.warn('Bot manage turn error:', e);
       }
-      setTimeout(() => {
-        if (document.querySelector('.modal-overlay.active')) return;
-        const cur = this.getCurrentPlayer();
-        if (cur && cur.isBot && this.turnPhase === 'END') {
-          this.endTurn();
-        }
-      }, 700);
+      this.checkBotTurn();
     }
   }
 
   endTurn() {
+    if (this.isMoving || this.isRolling) return; // Never end turn while token is in motion!
+
+    if (this._botTurnTimer) {
+      clearTimeout(this._botTurnTimer);
+      this._botTurnTimer = null;
+    }
+
     let nextIdx = (this.currentPlayerIndex + 1) % this.players.length;
     let attempts = 0;
     while (this.players[nextIdx].isBankrupt && attempts < this.players.length) {
@@ -3403,44 +3631,53 @@ class NavoVyaparGame {
 
     this.currentPlayerIndex = nextIdx;
     this.turnPhase = 'ROLL';
-    this.isRolling = false; // Always clear rolling flag on turn transition
+    this.isRolling = false;
+    this.isMoving = false;
+    this.isTurnProcessing = false;
+    this._turnCounter = (this._turnCounter || 0) + 1;
     this.updateUI();
 
     const nextPlayer = this.getCurrentPlayer();
     this.addLog(`હવે ${nextPlayer.name} નો દાવ છે.`);
-    this.showScreenNotification('🎲', 'નવો દાવ શરૂ!', `હવે ${nextPlayer.name} નો દાવ છે! પાસા ફેંકો.`, nextPlayer.color, 2500);
+    this.showScreenNotification('🎲', 'નવો દાવ શરૂ!', `હવે ${nextPlayer.name} નો દાવ છે! પાસા ફેંકો.`, nextPlayer.color, 2000);
 
     this.isGameActive = true;
     this.saveGameState();
-    this.startBotWatchdog();
-    this.checkBotTurn();
+
+    if (nextPlayer.isBot) {
+      this.checkBotTurn();
+    }
   }
 
   checkBotTurn() {
     const player = this.getCurrentPlayer();
     if (!player || !player.isBot || player.isBankrupt) return;
 
-    // Do not trigger bot action if any modal popup is open on screen
-    if (document.querySelector('.modal-overlay.active')) return;
+    if (this.isAnyModalOpen() || this.isMoving || this.isRolling) return;
 
-    if (this._botTurnTimer) clearTimeout(this._botTurnTimer);
+    if (this._botTurnTimer) {
+      clearTimeout(this._botTurnTimer);
+      this._botTurnTimer = null;
+    }
+
+    const currentTurnId = this._turnCounter;
 
     if (this.turnPhase === 'ROLL') {
       this._botTurnTimer = setTimeout(() => {
-        if (document.querySelector('.modal-overlay.active')) return;
+        if (currentTurnId !== this._turnCounter || this.isAnyModalOpen() || this.isMoving || this.isRolling) return;
         const cur = this.getCurrentPlayer();
-        if (cur && cur.isBot && this.turnPhase === 'ROLL') {
+        if (cur && cur.id === player.id && cur.isBot && this.turnPhase === 'ROLL') {
           this.rollDice();
         }
-      }, 750);
+      }, 950);
     } else if (this.turnPhase === 'END') {
       this._botTurnTimer = setTimeout(() => {
-        if (document.querySelector('.modal-overlay.active')) return;
+        if (currentTurnId !== this._turnCounter || this.isAnyModalOpen() || this.isMoving || this.isRolling) return;
         const cur = this.getCurrentPlayer();
-        if (cur && cur.isBot && this.turnPhase === 'END') {
+        if (cur && cur.id === player.id && cur.isBot && this.turnPhase === 'END') {
           this.endTurn();
         }
-      }, 600);
+      }, 850);
     }
   }
 
@@ -3448,19 +3685,19 @@ class NavoVyaparGame {
     if (this._watchdogInterval) clearInterval(this._watchdogInterval);
     this._watchdogInterval = setInterval(() => {
       if (!this.isGameActive) return;
-      // Do not interrupt while any modal is open on screen
-      if (document.querySelector('.modal-overlay.active')) return;
+      if (this.isAnyModalOpen()) return;
+      if (this.isMoving || this.isRolling || this.isTurnProcessing) return;
 
       const player = this.getCurrentPlayer();
       if (!player || !player.isBot || player.isBankrupt) return;
 
-      // Watchdog failsafe: If bot is in ROLL phase and not moving for >2.5s, force roll
-      if (this.turnPhase === 'ROLL' && !this.isRolling) {
+      // Watchdog failsafe: Only triggers if bot is completely idle for >3.5s
+      if (this.turnPhase === 'ROLL' && !this.isRolling && !this.isMoving) {
         this.rollDice();
-      } else if (this.turnPhase === 'END') {
+      } else if (this.turnPhase === 'END' && !this.isMoving) {
         this.endTurn();
       }
-    }, 2200);
+    }, 3500);
   }
 
   checkWinner() {
@@ -3523,10 +3760,104 @@ class NavoVyaparGame {
     if (loanBtn) loanBtn.disabled = curPlayer.isBot;
     if (manageBtn) manageBtn.disabled = curPlayer.isBot;
 
+    const loanBtnMobile = document.getElementById('btn-loan-mobile');
+    const manageBtnMobile = document.getElementById('btn-manage-mobile');
+    if (loanBtnMobile) loanBtnMobile.disabled = curPlayer.isBot;
+    if (manageBtnMobile) manageBtnMobile.disabled = curPlayer.isBot;
+
     const bCash = document.getElementById('bank-vault-cash');
     const bLoans = document.getElementById('bank-active-loans');
     if (bCash) bCash.innerText = `રૂ. ${this.bank.cash.toLocaleString('gu-IN')}`;
     if (bLoans) bLoans.innerText = `રૂ. ${this.bank.totalLoans.toLocaleString('gu-IN')}`;
+
+    // Top Bar Central Bank Pill
+    const bCashPill = document.getElementById('bank-vault-cash-pill');
+    const bLoansPill = document.getElementById('bank-active-loans-pill');
+    if (bCashPill) bCashPill.innerText = `રૂ. ${this.bank.cash.toLocaleString('gu-IN')}`;
+    if (bLoansPill) bLoansPill.innerText = `રૂ. ${this.bank.totalLoans.toLocaleString('gu-IN')}`;
+
+    // Ludo King Corner Player Badges
+    for (let i = 0; i < 6; i++) {
+      const badge = document.getElementById(`corner-player-${i}`);
+      if (!badge) continue;
+
+      if (i >= this.players.length) {
+        badge.style.display = 'none';
+        continue;
+      }
+
+      const p = this.players[i];
+      badge.style.display = 'flex';
+      badge.classList.toggle('active-turn', i === this.currentPlayerIndex);
+      badge.style.opacity = p.isBankrupt ? '0.35' : '1';
+
+      const nameEl = document.getElementById(`corner-name-${i}`);
+      const cashEl = document.getElementById(`corner-cash-${i}`);
+      const turnBadge = document.getElementById(`corner-badge-${i}`);
+      const avatarEl = document.getElementById(`corner-avatar-${i}`);
+      const charEl = document.getElementById(`corner-char-${i}`);
+
+      if (nameEl) nameEl.innerText = p.name;
+      if (cashEl) cashEl.innerText = `₹ ${p.cash.toLocaleString('gu-IN')}`;
+      if (turnBadge) turnBadge.style.display = (i === this.currentPlayerIndex) ? 'inline-block' : 'none';
+      if (avatarEl) {
+        avatarEl.style.backgroundColor = p.color;
+        avatarEl.style.borderColor = (i === this.currentPlayerIndex) ? '#ffd54f' : '#ffffff';
+      }
+      if (charEl) {
+        charEl.innerText = p.name.charAt(0);
+      }
+    }
+
+    // Desktop 3-Column Arena Cards (Laptop / Desktop)
+    for (let i = 0; i < 4; i++) {
+      const card = document.getElementById(`desk-card-${i}`);
+      if (!card) continue;
+      if (i >= this.players.length) {
+        card.style.display = 'none';
+        continue;
+      }
+      const p = this.players[i];
+      card.style.display = 'flex';
+      card.classList.toggle('active-turn', i === this.currentPlayerIndex);
+      card.style.opacity = p.isBankrupt ? '0.35' : '1';
+
+      const nameEl = document.getElementById(`desk-name-${i}`);
+      const cashEl = document.getElementById(`desk-cash-${i}`);
+      const badgeEl = document.getElementById(`desk-badge-${i}`);
+      const propsEl = document.getElementById(`desk-props-${i}`);
+      const networthEl = document.getElementById(`desk-networth-${i}`);
+      const avatarEl = document.getElementById(`desk-avatar-${i}`);
+
+      let propVal = p.properties.reduce((sum, id) => sum + (this.tiles[id]?.price || 0), 0);
+      let netWorth = p.cash + propVal - p.loan;
+
+      if (nameEl) nameEl.innerText = p.name;
+      if (cashEl) cashEl.innerText = `₹ ${p.cash.toLocaleString('gu-IN')}`;
+      if (badgeEl) badgeEl.style.display = (i === this.currentPlayerIndex) ? 'inline-block' : 'none';
+      if (propsEl) propsEl.innerText = p.properties.length;
+      if (networthEl) networthEl.innerText = `₹ ${netWorth.toLocaleString('gu-IN')}`;
+      if (avatarEl) {
+        avatarEl.style.backgroundColor = p.color;
+        avatarEl.innerText = p.name.charAt(0);
+      }
+    }
+
+    // Desktop Bank Card
+    const deskBankCash = document.getElementById('desk-bank-cash');
+    const deskBankLoans = document.getElementById('desk-bank-loans');
+    if (deskBankCash) deskBankCash.innerText = `₹ ${this.bank.cash.toLocaleString('gu-IN')}`;
+    if (deskBankLoans) deskBankLoans.innerText = `₹ ${this.bank.totalLoans.toLocaleString('gu-IN')}`;
+
+    // Desktop Live News Feed
+    const deskLogsBox = document.getElementById('desktop-logs-box');
+    if (deskLogsBox && this.logs && this.logs.length > 0) {
+      deskLogsBox.innerHTML = this.logs.slice(-15).reverse().map(l => `
+        <div style="background:rgba(255,255,255,0.04); padding:4px 6px; border-radius:4px; border-left:3px solid #ffd54f;">
+          <span style="color:#ffd54f; font-size:10px;">[${l.time || ''}]</span> ${l.msg}
+        </div>
+      `).join('');
+    }
 
     // Center Dock Turn Indicator
     const centerTurnPawn = document.getElementById('center-turn-pawn');
@@ -3665,13 +3996,34 @@ class NavoVyaparGame {
         </div>
       `).join('');
     }
+
+    const deskLogs = document.getElementById('desktop-logs-box');
+    if (deskLogs) {
+      deskLogs.innerHTML = this.logs.slice(0, 15).map(log => `
+        <div style="background:rgba(255,255,255,0.04); padding:4px 6px; border-radius:4px; border-left:3px solid #ffd54f;">
+          <span style="color:#ffd54f; font-size:10px;">[${log.time}]</span> ${log.msg}
+        </div>
+      `).join('');
+    }
   }
 
   showTileDetails(tile) {
-    this.updateActiveTileCard(tile.id);
+    if (tile.price > 0) {
+      this.showPropertyDeedCard(tile.id, true);
+    } else {
+      this.updateActiveTileCard(tile.id, true);
+    }
+  }
+
+  isAnyModalOpen() {
+    return !!document.querySelector('.modal-overlay.active');
   }
 
   openModal(id) {
+    if (this._botTurnTimer) {
+      clearTimeout(this._botTurnTimer);
+      this._botTurnTimer = null;
+    }
     const m = document.getElementById(id);
     if (m) m.classList.add('active');
   }
@@ -3679,6 +4031,14 @@ class NavoVyaparGame {
   closeModal(id) {
     const m = document.getElementById(id);
     if (m) m.classList.remove('active');
+
+    // Only if ALL modals are closed, resume bot turn
+    if (!this.isAnyModalOpen()) {
+      const cur = this.getCurrentPlayer();
+      if (cur && cur.isBot && !cur.isBankrupt && this.isGameActive) {
+        setTimeout(() => this.checkBotTurn(), 400);
+      }
+    }
   }
 
   // =========================================================================
@@ -3804,6 +4164,55 @@ class NavoVyaparGame {
     const manageBtnMobile = document.getElementById('btn-manage-mobile');
     if (manageBtnMobile) manageBtnMobile.onclick = () => this.showPropertyManageModal();
 
+    const topBankBtn = document.getElementById('btn-top-bank');
+    if (topBankBtn) topBankBtn.onclick = () => this.showBankLoanModal();
+
+    const deskLoanBtn = document.getElementById('btn-desk-loan-action');
+    if (deskLoanBtn) deskLoanBtn.onclick = () => this.showBankLoanModal();
+
+    // Desktop player cards click: open player portfolio modal
+    for (let i = 0; i < 4; i++) {
+      const card = document.getElementById(`desk-card-${i}`);
+      if (card) {
+        card.onclick = () => {
+          if (this.players && this.players[i]) {
+            sound.playClick();
+            this.showPlayerPortfolioModal(this.players[i]);
+          }
+        };
+      }
+    }
+
+    // Corner badges click: open player portfolio modal
+    for (let i = 0; i < 6; i++) {
+      const badge = document.getElementById(`corner-player-${i}`);
+      if (badge) {
+        badge.onclick = () => {
+          if (this.players && this.players[i]) {
+            sound.playClick();
+            this.showPlayerPortfolioModal(this.players[i]);
+          }
+        };
+      }
+    }
+
+    // Close tile toast button
+    const closeToastBtn = document.getElementById('btn-close-tile-toast');
+    if (closeToastBtn) {
+      closeToastBtn.onclick = () => {
+        const toast = document.getElementById('tile-tap-toast');
+        if (toast) toast.style.display = 'none';
+      };
+    }
+
+    const inspectCloseBtn = document.getElementById('btn-prop-inspect-close');
+    if (inspectCloseBtn) {
+      inspectCloseBtn.onclick = () => {
+        sound.playClick();
+        this.closeModal('modal-property');
+      };
+    }
+
     const seniorBtn = document.getElementById('btn-toggle-senior');
     if (seniorBtn) seniorBtn.onclick = () => this.toggleSeniorMode();
 
@@ -3839,7 +4248,7 @@ class NavoVyaparGame {
     document.querySelectorAll('.modal-close, .btn-modal-cancel').forEach(btn => {
       btn.onclick = (e) => {
         const modal = e.target.closest('.modal-overlay');
-        if (modal) modal.classList.remove('active');
+        if (modal) this.closeModal(modal.id);
       };
     });
 

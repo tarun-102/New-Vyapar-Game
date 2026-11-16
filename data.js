@@ -472,7 +472,7 @@ export const VYAVAHAR_RULES = {
 
 // કુલ ૬ ખેલાડીઓ (૧ માણસ + ૫ હોંશિયાર કોમ્પ્યુટર બોટ્સ)
 export const DEFAULT_PLAYERS = [
-  { id: 0, name: "તમે (લાલ)", color: "#e53935", tokenClass: "token-red", isBot: false },
+  { id: 0, name: "તમે", color: "#e53935", tokenClass: "token-red", isBot: false },
   { id: 1, name: "બોટ ૧: રમેશ (લીલો)", color: "#43a047", tokenClass: "token-green", isBot: true },
   { id: 2, name: "બોટ ૨: સુરેશ (પીળો)", color: "#fdd835", tokenClass: "token-yellow", isBot: true },
   { id: 3, name: "બોટ ૩: મહેશ (વાદળી)", color: "#1e88e5", tokenClass: "token-blue", isBot: true },

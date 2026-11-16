@@ -24,6 +24,14 @@
 }
 
 html, body {
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+  position: fixed;
+  inset: 0;
   overscroll-behavior: none !important;
   overscroll-behavior-y: none !important;
   -webkit-overflow-scrolling: touch;
@@ -33,17 +41,585 @@ body {
   font-family: 'Hind Vadodara', 'Poppins', sans-serif;
   background: radial-gradient(circle at 50% 15%, #152752 0%, #060a17 100%);
   color: var(--text-main);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  padding-bottom: 74px;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
-@media (min-width: 1025px) {
-  body {
-    padding-bottom: 0;
+/* ==========================================================================
+   APP CONTAINER & ZERO-SCROLL LAYOUT
+   ========================================================================== */
+.game-app-root {
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 15%, #152752 0%, #060a17 100%);
+}
+
+.app-top-bar {
+  height: 42px;
+  min-height: 42px;
+  background: rgba(8, 14, 30, 0.95);
+  border-bottom: 1px solid rgba(255, 213, 79, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  gap: 8px;
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+.brand-title-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.logo-badge-compact {
+  width: 28px;
+  height: 28px;
+  background: var(--gold-grad);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.title-text-compact h1 {
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff, #ffd54f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.title-text-compact p {
+  font-size: 8.5px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.top-bar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.top-bank-pill {
+  background: linear-gradient(135deg, rgba(255, 213, 79, 0.2) 0%, rgba(255, 179, 0, 0.08) 100%);
+  border: 1.5px solid #ffd54f;
+  color: #ffd54f;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.top-bank-pill:hover {
+  background: rgba(255, 213, 79, 0.35);
+  transform: translateY(-1px);
+}
+
+.bank-cash-sub {
+  color: #a7ffeb;
+  font-weight: 800;
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.top-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 213, 79, 0.3);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.top-icon-btn:hover {
+  background: rgba(255, 213, 79, 0.25);
+  border-color: #ffd54f;
+}
+
+.top-icon-btn.btn-senior-active {
+  background: #ffb300;
+  color: #070d1e;
+  border-color: #ffe082;
+}
+
+/* ==========================================================================
+   GAME ARENA STAGE (ZERO-SCROLL, EXPANDED BOARD, BALANCED FLANKS)
+   ========================================================================== */
+.game-arena-stage {
+  flex: 1;
+  position: relative;
+  width: 100vw;
+  height: calc(100dvh - 42px - 48px);
+  max-height: calc(100dvh - 42px - 48px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 4px;
+  box-sizing: border-box;
+  gap: 2px;
+}
+
+/* ==========================================================================
+   PLAYERS FLANK (OUTSIDE BOARD - NEVER OVERLAPPING TILES)
+   ========================================================================== */
+.players-flank {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: 38px;
+  min-height: 38px;
+  z-index: 10;
+}
+
+.flank-left-or-top {
+  order: 1;
+}
+
+.board-frame-container {
+  order: 2;
+  position: relative;
+  width: calc(100vw - 6px);
+  max-width: 480px;
+  height: min(calc(100dvh - 128px), calc((100vw - 6px) * 1.18));
+  max-height: calc(100dvh - 128px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.board-frame-container .board-container {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  transform: none !important;
+}
+
+.flank-right-or-bottom {
+  order: 3;
+}
+
+/* ==========================================================================
+   SLEEK PLAYER BADGES (IN FLANKS, COMPLETELY SAFE FROM BOARD TILES)
+   ========================================================================== */
+.corner-player-badge {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(11, 20, 42, 0.94);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  max-width: 155px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.corner-player-badge:hover {
+  transform: scale(1.04) !important;
+  border-color: #ffd54f;
+}
+
+.corner-player-badge.active-turn {
+  border-color: #ffd54f;
+  box-shadow: 0 0 14px rgba(255, 213, 79, 0.8), 0 2px 10px rgba(0, 0, 0, 0.7);
+  animation: badgePulse 1.8s infinite alternate;
+}
+
+@keyframes badgePulse {
+  0% { transform: scale(1.01); box-shadow: 0 0 8px rgba(255, 213, 79, 0.6); }
+  100% { transform: scale(1.05); box-shadow: 0 0 16px rgba(255, 213, 79, 0.95); }
+}
+
+.corner-avatar-ring {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.corner-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.corner-turn-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #66bb6a;
+  border: 1.5px solid #070d1e;
+  display: none;
+}
+
+.corner-player-badge.active-turn .corner-turn-dot {
+  display: block;
+}
+
+.corner-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.corner-info-right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.corner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.corner-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #eceff1;
+  max-width: 65px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corner-turn-badge {
+  background: #ffd54f;
+  color: #070d1e;
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 6px;
+}
+
+.corner-cash {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #69f0ae;
+  white-space: nowrap;
+}
+
+/* Position helpers reset so they never offset onto tiles */
+.corner-pos-tl, .corner-pos-tr, .corner-pos-bl, .corner-pos-br, .corner-pos-tc, .corner-pos-bc {
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+/* ==========================================================================
+   DESKTOP / LAPTOP LAYOUT (>= 900px): NO BULKY SIDEBARS!
+   GIANT EXPANDED BOARD IN CENTER + COMPACT VERTICAL FLANKS
+   ========================================================================== */
+.desktop-side-panel {
+  display: none !important;
+}
+
+@media (min-width: 900px) {
+  .game-arena-stage {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 24px !important;
+    padding: 6px 16px !important;
+    width: 100vw !important;
+    height: calc(100dvh - 44px) !important;
+    max-height: calc(100dvh - 44px) !important;
+    overflow: hidden !important;
   }
+
+  .players-flank {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 16px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .flank-left-or-top {
+    order: 1 !important;
+  }
+
+  .board-frame-container {
+    order: 2 !important;
+    height: calc(100dvh - 50px) !important;
+    max-height: calc(100dvh - 50px) !important;
+    width: calc(100dvh - 50px) !important;
+    max-width: calc(100vw - 320px) !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .flank-right-or-bottom {
+    order: 3 !important;
+  }
+
+  .corner-player-badge {
+    display: flex !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+    background: rgba(13, 24, 48, 0.95) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
+  }
+
+  .corner-player-badge .corner-avatar-ring {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .corner-player-badge .corner-avatar {
+    font-size: 14px !important;
+  }
+
+  .corner-player-badge .corner-name {
+    font-size: 12px !important;
+    max-width: 80px !important;
+  }
+
+  .corner-player-badge .corner-cash {
+    font-size: 12px !important;
+  }
+
+  .app-bottom-bar {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   LIVE TILE TAP TOAST
+   ========================================================================== */
+.tile-tap-toast {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 19, 39, 0.96);
+  border: 1.5px solid #ffd54f;
+  border-radius: 20px;
+  padding: 4px 10px 4px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+  z-index: 40;
+  max-width: 90%;
+  pointer-events: auto;
+  animation: slideDownToast 0.25s ease-out;
+}
+
+@keyframes slideDownToast {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.tile-tap-content {
+  font-size: 11.5px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-tap-close {
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   APP BOTTOM BAR DOCK
+   ========================================================================== */
+.app-bottom-bar {
+  height: 48px;
+  min-height: 48px;
+  background: rgba(8, 14, 30, 0.98);
+  border-top: 1px solid rgba(255, 213, 79, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 6px;
+  gap: 6px;
+  z-index: 50;
+  flex-shrink: 0;
+}
+
+.bottom-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 6px 10px;
+  height: 38px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.btn-bottom-loan {
+  background: rgba(255, 213, 79, 0.15);
+  border: 1px solid #ffd54f;
+  color: #ffd54f;
+  flex: 1;
+  max-width: 85px;
+}
+
+.btn-bottom-loan:hover {
+  background: rgba(255, 213, 79, 0.3);
+}
+
+.btn-bottom-roll {
+  background: linear-gradient(135deg, #ff1744 0%, #d50000 70%, #b71c1c 100%);
+  color: #fff;
+  border: 1.5px solid #ff8a80;
+  box-shadow: 0 2px 10px rgba(213, 0, 0, 0.6);
+  flex: 2;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.btn-bottom-roll:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(213, 0, 0, 0.8);
+}
+
+.btn-bottom-roll:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.btn-bottom-end {
+  background: linear-gradient(135deg, #00c853 0%, #009624 100%);
+  color: #fff;
+  border: 1.5px solid #b9f6ca;
+  flex: 2;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.btn-bottom-end:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 200, 83, 0.6);
+}
+
+.btn-bottom-end:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-bottom-manage {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #eceff1;
+  flex: 1;
+  max-width: 90px;
+}
+
+.btn-bottom-manage:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.hidden-compat {
+  display: none !important;
 }
 
 /* ==========================================================================
@@ -833,7 +1409,7 @@ body {
 }
 
 .player-pawn-wrapper.pawn-hopping {
-  animation: pawn-bounce 0.18s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: pawn-bounce 0.26s cubic-bezier(0.2, 1.4, 0.4, 1);
   z-index: 25;
 }
 
@@ -1779,44 +2355,117 @@ body.senior-mode .center-turn-text {
   flex-shrink: 0;
 }
 
-/* Deed Card */
+/* Authentic Physical Title Deed Box Card (અસલ મિલકત પત્રિકા કાર્ડ) */
 .deed-card {
-  background: #ffffff;
-  color: #212121;
-  border: 3px solid #000;
+  background: #fffefb;
+  color: #1a1a1a;
+  border: 3px double #212121;
   border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 14px;
+  padding: 12px 14px;
+  margin: 0 auto 12px auto;
+  max-width: 320px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(0,0,0,0.03);
+  font-family: 'Hind Vadodara', 'Poppins', sans-serif;
+  user-select: none;
 }
 
 .deed-header {
-  padding: 10px;
+  padding: 10px 8px;
   text-align: center;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 4px;
-  margin-bottom: 10px;
+  color: #ffffff;
+  border: 2px solid #1a1a1a;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.25);
+}
+
+.deed-header .deed-type-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2px;
 }
 
 .deed-header h2 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
+  margin: 0;
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.deed-header .deed-subname {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  margin-top: 2px;
+}
+
+.deed-price-band {
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 900;
+  color: #b71c1c;
+  background: rgba(183, 28, 28, 0.08);
+  border: 1px solid rgba(183, 28, 28, 0.3);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
 }
 
 .deed-rent-table {
   width: 100%;
-  font-size: 14px;
+  font-size: 12.5px;
   border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+.deed-rent-table tr {
+  border-bottom: 1px dashed #bdbdbd;
+}
+
+.deed-rent-table tr:last-child {
+  border-bottom: 1px solid #757575;
 }
 
 .deed-rent-table td {
-  padding: 5px 6px;
-  border-bottom: 1px dotted #ccc;
+  padding: 4px 6px;
+  color: #212121;
 }
 
 .deed-rent-table td:last-child {
   text-align: right;
   font-weight: 800;
+  color: #0d47a1;
+}
+
+.deed-mortgage-box {
+  background: #f5f5f5;
+  border: 1px solid #757575;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #333333;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.deed-rule-box {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #424242;
+  background: #fff8e1;
+  border-left: 3px solid #ffb300;
+  padding: 4px 8px;
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 4px;
 }
 
 /* Loan presets */
@@ -1907,6 +2556,41 @@ body.senior-mode .center-turn-text {
 }
 
 @media (max-width: 600px) {
+  .corner-player-badge {
+    padding: 2px 6px;
+    gap: 4px;
+  }
+  .corner-avatar-ring {
+    width: 26px;
+    height: 26px;
+  }
+  .corner-avatar {
+    font-size: 11px;
+  }
+  .corner-name {
+    font-size: 9.5px;
+    max-width: 48px;
+  }
+  .corner-cash {
+    font-size: 9.5px;
+  }
+  .corner-turn-badge {
+    font-size: 8px;
+    padding: 0px 3px;
+  }
+  .app-bottom-bar {
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .bottom-action-btn {
+    font-size: 11px;
+    padding: 4px 6px;
+    height: 36px;
+  }
+  .btn-bottom-roll {
+    font-size: 12px;
+  }
+
   .board-container {
     border-width: 3px;
     padding: 2px;
